@@ -96,8 +96,11 @@ function App() {
         setShowPrivacyBanner(false);
       }
 
-      // Force HTTPS redirect if on HTTP
-      if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
+      // Force HTTPS redirect if on HTTP (only in production)
+      if (window.location.protocol === 'http:' && 
+          window.location.hostname !== 'localhost' && 
+          window.location.hostname !== '127.0.0.1' &&
+          !window.location.hostname.includes('local')) {
         window.location.href = window.location.href.replace('http:', 'https:');
       }
     } catch (error) {
