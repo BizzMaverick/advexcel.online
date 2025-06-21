@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileSpreadsheet, Mail, Phone, MapPin, Shield, Cookie, FileText, Heart } from 'lucide-react';
+import { FileSpreadsheet, Mail, Phone, Shield, Cookie, FileText, Heart } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
@@ -18,15 +18,11 @@ export const Footer: React.FC = () => {
     { name: 'Refund Policy', href: '#refunds' }
   ];
 
-  const excelFunctions = [
-    'VLOOKUP', 'HLOOKUP', 'INDEX', 'MATCH', 'SUMIF', 'COUNTIF', 'AVERAGEIF', 'IF', 'NESTED IF', 'PIVOT TABLES'
-  ];
-
   return (
     <footer className="bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 text-white">
       {/* Main Footer Content */}
       <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {/* Company Info */}
           <div className="space-y-4">
             <div className="flex items-center space-x-3">
@@ -61,24 +57,6 @@ export const Footer: React.FC = () => {
                 </li>
               ))}
             </ul>
-          </div>
-
-          {/* Excel Functions */}
-          <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-white">Supported Functions</h4>
-            <div className="flex flex-wrap gap-1">
-              {excelFunctions.map((func) => (
-                <span 
-                  key={func}
-                  className="px-2 py-1 bg-blue-800/30 text-blue-300 text-xs rounded border border-blue-700/50 hover:bg-blue-700/30 transition-colors"
-                >
-                  {func}
-                </span>
-              ))}
-            </div>
-            <p className="text-xs text-gray-400">
-              And 200+ more Excel functions supported
-            </p>
           </div>
 
           {/* Contact & Legal */}
