@@ -19,6 +19,7 @@ import { SubscriptionBanner } from './components/SubscriptionBanner';
 import { ReferralPanel } from './components/ReferralPanel';
 import { Footer } from './components/Footer';
 import { LegalModals } from './components/LegalModals';
+import { GoogleSheetsProcessor } from './components/GoogleSheetsProcessor';
 import { SpreadsheetData, Cell } from './types/spreadsheet';
 import { User } from './types/auth';
 import { SuggestionFeedback } from './types/chat';
@@ -47,6 +48,9 @@ function App() {
   
   // Legal modals state
   const [activeLegalModal, setActiveLegalModal] = useState<'terms' | 'privacy' | 'cookies' | 'refunds' | null>(null);
+  
+  // Google Sheets Processor state
+  const [showGoogleSheetsProcessor, setShowGoogleSheetsProcessor] = useState(false);
   
   // Application state
   const [workbook, setWorkbook] = useState<WorkbookData | null>(null);
@@ -845,6 +849,14 @@ function App() {
             {/* User Menu */}
             <div className="flex items-center space-x-4">
               <button
+                onClick={() => setShowGoogleSheetsProcessor(true)}
+                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors"
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                <span>Google Sheets AI</span>
+              </button>
+
+              <button
                 onClick={() => setShowReferralPanel(true)}
                 className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors"
               >
@@ -994,6 +1006,12 @@ function App() {
         onClose={() => setShowExportModal(false)}
         onExport={handleExport}
         hasData={Object.keys(spreadsheetData.cells).length > 0}
+      />
+
+      {/* Google Sheets Processor */}
+      <GoogleSheetsProcessor
+        isVisible={showGoogleSheetsProcessor}
+        onClose={() => setShowGoogleSheetsProcessor(false)}
       />
 
       {/* Subscription Modal */}
