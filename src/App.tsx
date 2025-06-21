@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { FileSpreadsheet, Download, Upload, Save, RotateCcw, BarChart3, TrendingUp, Search, RefreshCw, Table, MessageCircle, Star, LogOut, Shield, X, Crown, Gift, Users } from 'lucide-react';
+import { FileSpreadsheet, Download, Upload, Save, RotateCcw, BarChart3, TrendingUp, Search, RefreshCw, Table, MessageCircle, Star, LogOut, Shield, X, Crown, Gift, Users, Calculator } from 'lucide-react';
 import Papa from 'papaparse';
 import { SpreadsheetGrid } from './components/SpreadsheetGrid';
 import { CommandBar } from './components/CommandBar';
@@ -20,6 +20,7 @@ import { ReferralPanel } from './components/ReferralPanel';
 import { Footer } from './components/Footer';
 import { LegalModals } from './components/LegalModals';
 import { GoogleSheetsProcessor } from './components/GoogleSheetsProcessor';
+import { FormulaAssistant } from './components/FormulaAssistant';
 import { SpreadsheetData, Cell } from './types/spreadsheet';
 import { User } from './types/auth';
 import { SuggestionFeedback } from './types/chat';
@@ -51,6 +52,9 @@ function App() {
   
   // Google Sheets Processor state
   const [showGoogleSheetsProcessor, setShowGoogleSheetsProcessor] = useState(false);
+  
+  // Formula Assistant state
+  const [showFormulaAssistant, setShowFormulaAssistant] = useState(false);
   
   // Application state
   const [workbook, setWorkbook] = useState<WorkbookData | null>(null);
@@ -197,6 +201,7 @@ function App() {
     setShowQueryResults(false);
     setShowExportModal(false);
     setShowPivotPanel(false);
+    setShowFormulaAssistant(false);
     setQueryResult(null);
     setIsDataLoaded(false);
     setIsLoading(false);
@@ -244,6 +249,28 @@ function App() {
       };
     });
   }, [workbook, user]);
+
+  const handleCellFormat = useCallback((cellId: string, format: any) => {
+    if (!checkFeatureAccess()) return;
+    
+    setSpreadsheetData(prev => {
+      const existingCell = prev.cells[cellId];
+      if (!existingCell) return prev;
+
+      const updatedCell = {
+        ...existingCell,
+        format: { ...existingCell.format, ...format }
+      };
+
+      return {
+        ...prev,
+        cells: {
+          ...prev.cells,
+          [cellId]: updatedCell
+        }
+      };
+    });
+  }, [user]);
 
   const handleCellSelect = useCallback((cellId: string) => {
     setSpreadsheetData(prev => ({
@@ -849,6 +876,14 @@ function App() {
             {/* User Menu */}
             <div className="flex items-center space-x-4">
               <button
+                onClick={() => setShowFormulaAssistant(true)}
+                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+              >
+                <Calculator className="h-4 w-4" />
+                <span>Formula Assistant</span>
+              </button>
+
+              <button
                 onClick={() => setShowGoogleSheetsProcessor(true)}
                 className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors"
               >
@@ -1006,6 +1041,15 @@ function App() {
         onClose={() => setShowExportModal(false)}
         onExport={handleExport}
         hasData={Object.keys(spreadsheetData.cells).length > 0}
+      />
+
+      {/* Formula Assistant */}
+      <FormulaAssistant
+        cells={spreadsheetData.cells}
+        onCellUpdate={handleCellChange}
+        onCellFormat={handleCellFormat}
+        isVisible={showFormulaAssistant}
+        onClose={() => setShowFormulaAssistant(false)}
       />
 
       {/* Google Sheets Processor */}
