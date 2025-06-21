@@ -10,7 +10,12 @@ import {
   Filter,
   Download,
   Upload,
-  Calculator
+  Calculator,
+  Function,
+  Sigma,
+  TrendingUp,
+  Database,
+  Zap
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -33,6 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isDataLoaded
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showExcelFunctions, setShowExcelFunctions] = useState(false);
 
   const menuItems = [
     {
@@ -81,6 +87,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       description: 'Export to various formats',
       enabled: isDataLoaded
     }
+  ];
+
+  const excelFunctions = [
+    { category: 'Math & Stats', icon: Sigma, functions: ['SUM', 'AVERAGE', 'COUNT', 'MIN', 'MAX', 'STDEV', 'VAR'] },
+    { category: 'Lookup & Reference', icon: Database, functions: ['VLOOKUP', 'HLOOKUP', 'INDEX', 'MATCH', 'XLOOKUP'] },
+    { category: 'Logical', icon: Zap, functions: ['IF', 'IFS', 'AND', 'OR', 'NOT', 'IFERROR'] },
+    { category: 'Text', icon: Function, functions: ['CONCATENATE', 'LEFT', 'RIGHT', 'MID', 'LEN', 'FIND'] },
+    { category: 'Date & Time', icon: TrendingUp, functions: ['TODAY', 'NOW', 'DATE', 'YEAR', 'MONTH', 'DAY'] }
   ];
 
   return (
@@ -165,6 +179,49 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               );
             })}
+
+            {/* Excel Functions Section */}
+            {isExpanded && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <button
+                  onClick={() => setShowExcelFunctions(!showExcelFunctions)}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                >
+                  <div className="flex items-center space-x-2">
+                    <Function className="h-4 w-4 text-blue-600" />
+                    <span>Excel Functions</span>
+                  </div>
+                  <ChevronRight className={`h-4 w-4 transition-transform ${showExcelFunctions ? 'rotate-90' : ''}`} />
+                </button>
+
+                {showExcelFunctions && (
+                  <div className="mt-2 space-y-2 max-h-64 overflow-y-auto">
+                    {excelFunctions.map((category, index) => {
+                      const CategoryIcon = category.icon;
+                      return (
+                        <div key={index} className="px-3">
+                          <div className="flex items-center space-x-2 py-2">
+                            <CategoryIcon className="h-3 w-3 text-gray-500" />
+                            <span className="text-xs font-medium text-gray-600">{category.category}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-1 ml-5">
+                            {category.functions.map((func) => (
+                              <span
+                                key={func}
+                                className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded border border-blue-200 hover:bg-blue-100 transition-colors cursor-pointer"
+                                title={`Click to learn about ${func}`}
+                              >
+                                {func}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -174,6 +231,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="text-center">
               <div className="text-xs text-gray-500 mb-1">Excel Analyzer Pro</div>
               <div className="text-xs text-gray-400">Advanced Analytics Suite</div>
+              <div className="text-xs text-blue-600 mt-1">200+ Functions Supported</div>
             </div>
           </div>
         )}

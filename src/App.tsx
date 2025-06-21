@@ -18,6 +18,8 @@ import { WorkbookManager } from './components/WorkbookManager';
 import { SubscriptionModal } from './components/SubscriptionModal';
 import { SubscriptionBanner } from './components/SubscriptionBanner';
 import { ReferralPanel } from './components/ReferralPanel';
+import { Footer } from './components/Footer';
+import { LegalModals } from './components/LegalModals';
 import { SpreadsheetData, Cell } from './types/spreadsheet';
 import { User } from './types/auth';
 import { SuggestionFeedback } from './types/chat';
@@ -43,6 +45,9 @@ function App() {
   
   // Referral state
   const [showReferralPanel, setShowReferralPanel] = useState(false);
+  
+  // Legal modals state
+  const [activeLegalModal, setActiveLegalModal] = useState<'terms' | 'privacy' | 'cookies' | 'refunds' | null>(null);
   
   // Application state
   const [workbook, setWorkbook] = useState<WorkbookData | null>(null);
@@ -103,6 +108,21 @@ function App() {
           !window.location.hostname.includes('local')) {
         window.location.href = window.location.href.replace('http:', 'https:');
       }
+
+      // Handle legal modal links from footer
+      const handleHashChange = () => {
+        const hash = window.location.hash.substring(1);
+        if (['terms', 'privacy', 'cookies', 'refunds'].includes(hash)) {
+          setActiveLegalModal(hash as any);
+        }
+      };
+
+      window.addEventListener('hashchange', handleHashChange);
+      handleHashChange(); // Check initial hash
+
+      return () => {
+        window.removeEventListener('hashchange', handleHashChange);
+      };
     } catch (error) {
       console.error('Error initializing app:', error);
       // Fallback to demo user
@@ -761,11 +781,16 @@ function App() {
 
   // Show welcome screen if no data is loaded
   if (showWelcomeScreen && !isDataLoaded) {
-    return <WelcomeScreen onImportFile={handleImportFile} isLoading={isLoading} />;
+    return (
+      <div className="min-h-screen flex flex-col">
+        <WelcomeScreen onImportFile={handleImportFile} isLoading={isLoading} />
+        <Footer />
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Privacy Banner */}
       {showPrivacyBanner && (
         <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 px-4 z-50 shadow-lg">
@@ -968,6 +993,9 @@ function App() {
             <FunctionPanel onFunctionSelect={handleFunctionSelect} />
           )}
         </div>
+
+        {/* Footer */}
+        <Footer />
       </div>
 
       {/* Analytics Panel */}
@@ -1028,6 +1056,15 @@ function App() {
         isVisible={showRatingModal}
         onClose={() => setShowRatingModal(false)}
         onSubmitRating={handleRatingSubmit}
+      />
+
+      {/* Legal Modals */}
+      <LegalModals
+        activeModal={activeLegalModal}
+        onClose={() => {
+          setActiveLegalModal(null);
+          window.history.pushState('', document.title, window.location.pathname);
+        }}
       />
 
       {/* Loading Overlay */}
