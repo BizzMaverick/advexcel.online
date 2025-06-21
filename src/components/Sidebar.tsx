@@ -1,5 +1,27 @@
 import React, { useState } from 'react';
-import { BarChart3, Table, FileSpreadsheet, Search, Settings, ChevronRight, Activity, Filter, Download, Upload, Calculator, FunctionSquare as Function, Sigma, TrendingUp, Database, Zap, Calendar, Type, Hash, Palette, Code } from 'lucide-react';
+import { 
+  BarChart3, 
+  Table, 
+  FileSpreadsheet, 
+  Search, 
+  Settings,
+  ChevronRight,
+  Activity,
+  Filter,
+  Download,
+  Upload,
+  Calculator,
+  FunctionSquare as Function,
+  Sigma,
+  TrendingUp,
+  Database,
+  Zap,
+  Calendar,
+  Type,
+  Hash,
+  Palette,
+  Code
+} from 'lucide-react';
 
 interface SidebarProps {
   onAnalyticsClick: () => void;
