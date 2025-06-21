@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calculator, TrendingUp, Filter, Palette, BarChart3, Database, Search, Calendar, Hash, Type, Zap, BookOpen } from 'lucide-react';
+import { Calculator, TrendingUp, Filter, Palette, BarChart3, Database, Search, Calendar, Hash, Type, Zap, BookOpen, X } from 'lucide-react';
 
 interface FunctionPanelProps {
   onFunctionSelect: (category: string, func: string) => void;
