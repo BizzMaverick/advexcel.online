@@ -3,7 +3,6 @@ import { FileSpreadsheet, Download, Upload, Save, RotateCcw, BarChart3, Trending
 import Papa from 'papaparse';
 import { SpreadsheetGrid } from './components/SpreadsheetGrid';
 import { CommandBar } from './components/CommandBar';
-import { FunctionPanel } from './components/FunctionPanel';
 import { StatusBar } from './components/StatusBar';
 import { AnalyticsPanel } from './components/AnalyticsPanel';
 import { QueryResultsPanel } from './components/QueryResultsPanel';
@@ -58,7 +57,6 @@ function App() {
   });
 
   const [notifications, setNotifications] = useState<Array<{ id: number; message: string; type: 'success' | 'error' | 'info' }>>([]);
-  const [showFunctionPanel, setShowFunctionPanel] = useState(false);
   const [showAnalyticsPanel, setShowAnalyticsPanel] = useState(false);
   const [showQueryResults, setShowQueryResults] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -191,7 +189,6 @@ function App() {
       selectedCell: undefined,
       selectedRange: [],
     });
-    setShowFunctionPanel(false);
     setShowAnalyticsPanel(false);
     setShowQueryResults(false);
     setShowExportModal(false);
@@ -341,40 +338,6 @@ function App() {
       addNotification('Error executing command. Please try again.', 'error');
     }
   }, [spreadsheetData, workbook, user]);
-
-  const handleFunctionSelect = useCallback((category: string, functionName: string) => {
-    if (!checkFeatureAccess()) return;
-    
-    const selectedCell = spreadsheetData.selectedCell;
-    if (!selectedCell) {
-      addNotification('Please select a cell first', 'error');
-      return;
-    }
-
-    let formula = '';
-    switch (functionName) {
-      case 'SUM':
-        formula = '=SUM(A1:A10)';
-        break;
-      case 'AVERAGE':
-        formula = '=AVERAGE(A1:A10)';
-        break;
-      case 'VLOOKUP':
-        formula = '=VLOOKUP(A1,B:D,2,FALSE)';
-        break;
-      case 'IF':
-        formula = '=IF(A1>10,"High","Low")';
-        break;
-      case 'NESTED IF':
-        formula = '=IF(A1>100,"High",IF(A1>50,"Medium","Low"))';
-        break;
-      default:
-        formula = `=${functionName}()`;
-    }
-
-    handleCellChange(selectedCell, formula, formula);
-    addNotification(`${functionName} function added to cell ${selectedCell}`, 'success');
-  }, [spreadsheetData.selectedCell, handleCellChange]);
 
   const calculateSelectionStats = () => {
     if (!spreadsheetData.selectedCell) return undefined;
@@ -741,12 +704,25 @@ function App() {
     'Create distribution analysis',
     'Perform statistical analysis',
     
-    // Traditional Excel Operations
-    'Create pivot table from A1:D10',
-    'Apply conditional formatting to B1:B20 where value > 100',
-    'VLOOKUP in column C using table A1:B10',
+    // Excel Functions via Natural Language
+    'Perform VLOOKUP on column A using table B1:D10',
     'Calculate SUM of range E1:E20',
-    'Apply nested IF formula to column D',
+    'Apply AVERAGE function to column C',
+    'Create IF formula for column D where value > 100',
+    'Apply nested IF to categorize data',
+    'Use COUNTIF to count cells containing "Sales"',
+    'Apply SUMIF where region equals "West"',
+    'Create CONCATENATE formula for names',
+    'Use INDEX MATCH instead of VLOOKUP',
+    'Apply ROUND function to 2 decimal places',
+    'Calculate MEDIAN of selected range',
+    'Use TRIM to clean text data',
+    'Apply UPPER case to text column',
+    'Create DATE formula from separate columns',
+    'Calculate DATEDIF between two dates',
+    'Use PMT for loan calculations',
+    'Apply conditional formatting to highlight values',
+    'Create pivot table from A1:D10',
     'Filter data where column A contains "Sales"',
     'Format range as currency',
   ];
@@ -837,14 +813,10 @@ function App() {
         onPivotTableClick={() => {
           if (checkFeatureAccess()) setShowPivotPanel(true);
         }}
-        onFunctionPanelToggle={() => {
-          if (checkFeatureAccess()) setShowFunctionPanel(!showFunctionPanel);
-        }}
         onExportClick={() => {
           if (checkFeatureAccess()) setShowExportModal(true);
         }}
         onImportClick={handleImportFile}
-        showFunctionPanel={showFunctionPanel}
         isDataLoaded={isDataLoaded}
       />
 
@@ -948,12 +920,12 @@ function App() {
           <div className="mb-2">
             <div className="flex items-center space-x-2 text-sm text-gray-600">
               <Search className="h-4 w-4" />
-              <span className="font-medium">Try natural language queries:</span>
-              <span className="text-blue-600">"extract west region data"</span>
+              <span className="font-medium">Try natural language queries and Excel functions:</span>
+              <span className="text-blue-600">"perform vlookup"</span>
               <span className="text-gray-400">•</span>
-              <span className="text-blue-600">"show top 10 sales"</span>
+              <span className="text-blue-600">"calculate sum of range A1:A10"</span>
               <span className="text-gray-400">•</span>
-              <span className="text-blue-600">"create pivot table"</span>
+              <span className="text-blue-600">"apply if formula"</span>
               {workbook && workbook.worksheets.length > 1 && (
                 <>
                   <span className="text-gray-400">•</span>
@@ -987,11 +959,6 @@ function App() {
               calculations={calculateSelectionStats()}
             />
           </div>
-
-          {/* Function Panel */}
-          {showFunctionPanel && (
-            <FunctionPanel onFunctionSelect={handleFunctionSelect} />
-          )}
         </div>
 
         {/* Footer */}

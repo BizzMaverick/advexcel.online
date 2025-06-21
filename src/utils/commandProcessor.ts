@@ -17,6 +17,11 @@ export class CommandProcessor {
     const lowerCommand = command.toLowerCase().trim();
 
     try {
+      // Excel Functions via Natural Language
+      if (this.isExcelFunctionCommand(lowerCommand)) {
+        return this.handleExcelFunctionCommand(command);
+      }
+
       // Data Analytics commands
       if (lowerCommand.includes('analyze') || lowerCommand.includes('analytics') || lowerCommand.includes('insights')) {
         return this.handleAnalyticsCommand(command);
@@ -52,11 +57,6 @@ export class CommandProcessor {
         return this.handleDistributionCommand(command);
       }
 
-      // VLOOKUP commands
-      if (lowerCommand.includes('vlookup')) {
-        return this.handleVlookupCommand(command);
-      }
-
       // Pivot table commands
       if (lowerCommand.includes('pivot')) {
         return this.handlePivotCommand(command);
@@ -67,31 +67,14 @@ export class CommandProcessor {
         return this.handleConditionalFormatCommand(command);
       }
 
-      // Mathematical operations
-      if (lowerCommand.includes('sum') || lowerCommand.includes('average') || 
-          lowerCommand.includes('count') || lowerCommand.includes('min') || 
-          lowerCommand.includes('max')) {
-        return this.handleMathCommand(command);
-      }
-
-      // IF statements
-      if (lowerCommand.includes('if formula') || lowerCommand.includes('if statement')) {
-        return this.handleIfCommand(command);
-      }
-
       // Data filtering
       if (lowerCommand.includes('filter')) {
         return this.handleFilterCommand(command);
       }
 
-      // Advanced Excel functions
-      if (lowerCommand.includes('nested if') || lowerCommand.includes('complex formula')) {
-        return this.handleAdvancedFormulaCommand(command);
-      }
-
       return {
         success: false,
-        message: 'Command not recognized. Try commands like "analyze data", "create chart", "find outliers", "calculate correlation", "create pivot table", or traditional Excel operations.'
+        message: 'Command not recognized. Try commands like "perform vlookup", "calculate sum", "apply if formula", "analyze data", "create chart", "find outliers", or "create pivot table".'
       };
 
     } catch (error) {
@@ -100,6 +83,339 @@ export class CommandProcessor {
         message: `Error processing command: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }
+  }
+
+  private isExcelFunctionCommand(command: string): boolean {
+    const excelFunctions = [
+      'vlookup', 'hlookup', 'index', 'match', 'xlookup',
+      'sum', 'average', 'count', 'min', 'max', 'median', 'mode',
+      'sumif', 'sumifs', 'averageif', 'countif', 'countifs',
+      'if', 'ifs', 'and', 'or', 'not', 'iferror', 'ifna',
+      'concatenate', 'concat', 'left', 'right', 'mid', 'len', 'find', 'substitute', 'upper', 'lower', 'trim',
+      'today', 'now', 'date', 'year', 'month', 'day', 'datedif',
+      'pmt', 'pv', 'fv', 'npv', 'irr', 'rate',
+      'round', 'roundup', 'rounddown', 'abs', 'sqrt', 'power'
+    ];
+
+    return excelFunctions.some(func => 
+      command.includes(func) || 
+      command.includes(`perform ${func}`) ||
+      command.includes(`apply ${func}`) ||
+      command.includes(`use ${func}`) ||
+      command.includes(`calculate ${func}`) ||
+      command.includes(`create ${func}`)
+    );
+  }
+
+  private handleExcelFunctionCommand(command: string): { success: boolean; message: string; data?: any } {
+    const lowerCommand = command.toLowerCase();
+
+    // VLOOKUP
+    if (lowerCommand.includes('vlookup')) {
+      return this.handleVlookupCommand(command);
+    }
+
+    // Mathematical functions
+    if (lowerCommand.includes('sum')) {
+      return this.handleSumCommand(command);
+    }
+
+    if (lowerCommand.includes('average')) {
+      return this.handleAverageCommand(command);
+    }
+
+    if (lowerCommand.includes('count')) {
+      return this.handleCountCommand(command);
+    }
+
+    if (lowerCommand.includes('min') || lowerCommand.includes('minimum')) {
+      return this.handleMinCommand(command);
+    }
+
+    if (lowerCommand.includes('max') || lowerCommand.includes('maximum')) {
+      return this.handleMaxCommand(command);
+    }
+
+    // Logical functions
+    if (lowerCommand.includes('if formula') || lowerCommand.includes('if function')) {
+      return this.handleIfCommand(command);
+    }
+
+    // Text functions
+    if (lowerCommand.includes('concatenate')) {
+      return this.handleConcatenateCommand(command);
+    }
+
+    if (lowerCommand.includes('upper')) {
+      return this.handleUpperCommand(command);
+    }
+
+    if (lowerCommand.includes('lower')) {
+      return this.handleLowerCommand(command);
+    }
+
+    if (lowerCommand.includes('trim')) {
+      return this.handleTrimCommand(command);
+    }
+
+    // Date functions
+    if (lowerCommand.includes('today')) {
+      return this.handleTodayCommand(command);
+    }
+
+    if (lowerCommand.includes('date')) {
+      return this.handleDateCommand(command);
+    }
+
+    // Rounding functions
+    if (lowerCommand.includes('round')) {
+      return this.handleRoundCommand(command);
+    }
+
+    // Conditional functions
+    if (lowerCommand.includes('sumif')) {
+      return this.handleSumIfCommand(command);
+    }
+
+    if (lowerCommand.includes('countif')) {
+      return this.handleCountIfCommand(command);
+    }
+
+    return {
+      success: false,
+      message: 'Excel function not recognized. Try specific functions like "perform vlookup", "calculate sum of range A1:A10", "apply if formula", etc.'
+    };
+  }
+
+  private handleVlookupCommand(command: string): { success: boolean; message: string; data?: any } {
+    const match = command.match(/vlookup.*?(\w+\d+:\w+\d+).*?column\s+(\w+)/i);
+    if (match) {
+      const [, tableRange, targetColumn] = match;
+      return {
+        success: true,
+        message: `VLOOKUP formula template: =VLOOKUP(lookup_value, ${tableRange}, column_index, FALSE). Apply this to column ${targetColumn}.`,
+        data: { 
+          type: 'vlookup', 
+          formula: `=VLOOKUP(A1,${tableRange},2,FALSE)`,
+          tableRange, 
+          targetColumn 
+        }
+      };
+    }
+    return {
+      success: true,
+      message: 'VLOOKUP formula template: =VLOOKUP(lookup_value, table_array, col_index_num, FALSE). Specify the lookup value, table range, and column index.',
+      data: { 
+        type: 'vlookup', 
+        formula: '=VLOOKUP(A1,B:D,2,FALSE)',
+        example: 'Example: =VLOOKUP(A1,B1:D10,2,FALSE)'
+      }
+    };
+  }
+
+  private handleSumCommand(command: string): { success: boolean; message: string; data?: any } {
+    const rangeMatch = command.match(/(\w+\d+:\w+\d+)/);
+    if (rangeMatch) {
+      const range = rangeMatch[1];
+      const result = this.excelFunctions.sum(range);
+      return {
+        success: true,
+        message: `SUM of ${range} = ${result}. Formula: =SUM(${range})`,
+        data: { type: 'calculation', operation: 'sum', range, result, formula: `=SUM(${range})` }
+      };
+    }
+    return {
+      success: true,
+      message: 'SUM formula template: =SUM(range). Example: =SUM(A1:A10) or specify a range like "calculate sum of range A1:A10"',
+      data: { type: 'formula_template', formula: '=SUM(A1:A10)' }
+    };
+  }
+
+  private handleAverageCommand(command: string): { success: boolean; message: string; data?: any } {
+    const rangeMatch = command.match(/(\w+\d+:\w+\d+)/);
+    if (rangeMatch) {
+      const range = rangeMatch[1];
+      const result = this.excelFunctions.average(range);
+      return {
+        success: true,
+        message: `AVERAGE of ${range} = ${result.toFixed(2)}. Formula: =AVERAGE(${range})`,
+        data: { type: 'calculation', operation: 'average', range, result, formula: `=AVERAGE(${range})` }
+      };
+    }
+    return {
+      success: true,
+      message: 'AVERAGE formula template: =AVERAGE(range). Example: =AVERAGE(A1:A10) or specify a range like "calculate average of range A1:A10"',
+      data: { type: 'formula_template', formula: '=AVERAGE(A1:A10)' }
+    };
+  }
+
+  private handleCountCommand(command: string): { success: boolean; message: string; data?: any } {
+    const rangeMatch = command.match(/(\w+\d+:\w+\d+)/);
+    if (rangeMatch) {
+      const range = rangeMatch[1];
+      const result = this.excelFunctions.count(range);
+      return {
+        success: true,
+        message: `COUNT of ${range} = ${result}. Formula: =COUNT(${range})`,
+        data: { type: 'calculation', operation: 'count', range, result, formula: `=COUNT(${range})` }
+      };
+    }
+    return {
+      success: true,
+      message: 'COUNT formula template: =COUNT(range). Example: =COUNT(A1:A10) or specify a range like "count cells in range A1:A10"',
+      data: { type: 'formula_template', formula: '=COUNT(A1:A10)' }
+    };
+  }
+
+  private handleMinCommand(command: string): { success: boolean; message: string; data?: any } {
+    const rangeMatch = command.match(/(\w+\d+:\w+\d+)/);
+    if (rangeMatch) {
+      const range = rangeMatch[1];
+      const result = this.excelFunctions.min(range);
+      return {
+        success: true,
+        message: `MIN of ${range} = ${result}. Formula: =MIN(${range})`,
+        data: { type: 'calculation', operation: 'min', range, result, formula: `=MIN(${range})` }
+      };
+    }
+    return {
+      success: true,
+      message: 'MIN formula template: =MIN(range). Example: =MIN(A1:A10) or specify a range like "find minimum in range A1:A10"',
+      data: { type: 'formula_template', formula: '=MIN(A1:A10)' }
+    };
+  }
+
+  private handleMaxCommand(command: string): { success: boolean; message: string; data?: any } {
+    const rangeMatch = command.match(/(\w+\d+:\w+\d+)/);
+    if (rangeMatch) {
+      const range = rangeMatch[1];
+      const result = this.excelFunctions.max(range);
+      return {
+        success: true,
+        message: `MAX of ${range} = ${result}. Formula: =MAX(${range})`,
+        data: { type: 'calculation', operation: 'max', range, result, formula: `=MAX(${range})` }
+      };
+    }
+    return {
+      success: true,
+      message: 'MAX formula template: =MAX(range). Example: =MAX(A1:A10) or specify a range like "find maximum in range A1:A10"',
+      data: { type: 'formula_template', formula: '=MAX(A1:A10)' }
+    };
+  }
+
+  private handleIfCommand(command: string): { success: boolean; message: string; data?: any } {
+    const conditionMatch = command.match(/where\s+(.+?)(?:\s+then|$)/i);
+    if (conditionMatch) {
+      const condition = conditionMatch[1];
+      return {
+        success: true,
+        message: `IF formula template: =IF(${condition}, true_value, false_value). Example: =IF(A1>100, "High", "Low")`,
+        data: { 
+          type: 'if_formula', 
+          condition,
+          formula: `=IF(${condition}, "True", "False")`,
+          template: '=IF(condition, value_if_true, value_if_false)'
+        }
+      };
+    }
+    return {
+      success: true,
+      message: 'IF formula template: =IF(condition, value_if_true, value_if_false). Example: =IF(A1>10, "High", "Low")',
+      data: { type: 'if_formula', template: '=IF(A1>10, "High", "Low")' }
+    };
+  }
+
+  private handleConcatenateCommand(command: string): { success: boolean; message: string; data?: any } {
+    return {
+      success: true,
+      message: 'CONCATENATE formula template: =CONCATENATE(text1, text2, ...). Example: =CONCATENATE(A1, " ", B1) or use & operator: =A1&" "&B1',
+      data: { 
+        type: 'text_formula', 
+        formula: '=CONCATENATE(A1, " ", B1)',
+        alternative: '=A1&" "&B1'
+      }
+    };
+  }
+
+  private handleUpperCommand(command: string): { success: boolean; message: string; data?: any } {
+    return {
+      success: true,
+      message: 'UPPER formula template: =UPPER(text). Example: =UPPER(A1) converts text to uppercase',
+      data: { type: 'text_formula', formula: '=UPPER(A1)' }
+    };
+  }
+
+  private handleLowerCommand(command: string): { success: boolean; message: string; data?: any } {
+    return {
+      success: true,
+      message: 'LOWER formula template: =LOWER(text). Example: =LOWER(A1) converts text to lowercase',
+      data: { type: 'text_formula', formula: '=LOWER(A1)' }
+    };
+  }
+
+  private handleTrimCommand(command: string): { success: boolean; message: string; data?: any } {
+    return {
+      success: true,
+      message: 'TRIM formula template: =TRIM(text). Example: =TRIM(A1) removes extra spaces from text',
+      data: { type: 'text_formula', formula: '=TRIM(A1)' }
+    };
+  }
+
+  private handleTodayCommand(command: string): { success: boolean; message: string; data?: any } {
+    return {
+      success: true,
+      message: 'TODAY formula: =TODAY() returns the current date. Example: =TODAY()',
+      data: { type: 'date_formula', formula: '=TODAY()', result: new Date().toLocaleDateString() }
+    };
+  }
+
+  private handleDateCommand(command: string): { success: boolean; message: string; data?: any } {
+    return {
+      success: true,
+      message: 'DATE formula template: =DATE(year, month, day). Example: =DATE(2024, 12, 25) or =DATE(A1, B1, C1)',
+      data: { type: 'date_formula', formula: '=DATE(2024, 12, 25)' }
+    };
+  }
+
+  private handleRoundCommand(command: string): { success: boolean; message: string; data?: any } {
+    const digitsMatch = command.match(/(\d+)\s*decimal/i);
+    const digits = digitsMatch ? digitsMatch[1] : '2';
+    
+    return {
+      success: true,
+      message: `ROUND formula template: =ROUND(number, ${digits}). Example: =ROUND(A1, ${digits}) rounds to ${digits} decimal places`,
+      data: { type: 'math_formula', formula: `=ROUND(A1, ${digits})` }
+    };
+  }
+
+  private handleSumIfCommand(command: string): { success: boolean; message: string; data?: any } {
+    const criteriaMatch = command.match(/where\s+(.+)/i);
+    const criteria = criteriaMatch ? criteriaMatch[1] : 'criteria';
+    
+    return {
+      success: true,
+      message: `SUMIF formula template: =SUMIF(range, "${criteria}", sum_range). Example: =SUMIF(A:A, ">100", B:B)`,
+      data: { 
+        type: 'conditional_formula', 
+        formula: `=SUMIF(A:A, "${criteria}", B:B)`,
+        criteria
+      }
+    };
+  }
+
+  private handleCountIfCommand(command: string): { success: boolean; message: string; data?: any } {
+    const criteriaMatch = command.match(/where\s+(.+)/i);
+    const criteria = criteriaMatch ? criteriaMatch[1] : 'criteria';
+    
+    return {
+      success: true,
+      message: `COUNTIF formula template: =COUNTIF(range, "${criteria}"). Example: =COUNTIF(A:A, ">100")`,
+      data: { 
+        type: 'conditional_formula', 
+        formula: `=COUNTIF(A:A, "${criteria}")`,
+        criteria
+      }
+    };
   }
 
   private handleAnalyticsCommand(command: string): { success: boolean; message: string; data?: any } {
@@ -273,34 +589,6 @@ export class CommandProcessor {
     }
   }
 
-  private handleAdvancedFormulaCommand(command: string): { success: boolean; message: string; data?: any } {
-    const templates = {
-      'nested_if': '=IF(A1>100,"High",IF(A1>50,"Medium",IF(A1>10,"Low","Very Low")))',
-      'vlookup_if': '=IF(ISERROR(VLOOKUP(A1,B:D,2,FALSE)),"Not Found",VLOOKUP(A1,B:D,2,FALSE))',
-      'complex_sum': '=SUMIFS(C:C,A:A,"Sales",B:B,">100")',
-      'array_formula': '=SUM(IF(A1:A10>AVERAGE(A1:A10),A1:A10,0))'
-    };
-
-    return {
-      success: true,
-      message: 'Advanced formula templates available for complex calculations.',
-      data: { type: 'advanced_formula', templates }
-    };
-  }
-
-  private handleVlookupCommand(command: string): { success: boolean; message: string; data?: any } {
-    const match = command.match(/vlookup.*?(\w+\d+:\w+\d+).*?column\s+(\w+)/i);
-    if (match) {
-      const [, tableRange, targetColumn] = match;
-      return {
-        success: true,
-        message: `VLOOKUP applied to ${targetColumn} using table range ${tableRange}`,
-        data: { type: 'vlookup', tableRange, targetColumn }
-      };
-    }
-    return { success: false, message: 'Invalid VLOOKUP syntax. Use: "VLOOKUP in column C using table A1:B10"' };
-  }
-
   private handlePivotCommand(command: string): { success: boolean; message: string; data?: any } {
     const rangeMatch = command.match(/(\w+\d+:\w+\d+)/);
     if (rangeMatch) {
@@ -331,51 +619,10 @@ export class CommandProcessor {
         data: { type: 'conditional_format', range, condition }
       };
     }
-    return { success: false, message: 'Use format: "Apply conditional formatting to B1:B20 where value > 100"' };
-  }
-
-  private handleMathCommand(command: string): { success: boolean; message: string; data?: any } {
-    const rangeMatch = command.match(/(\w+\d+:\w+\d+)/);
-    const operation = command.match(/(sum|average|count|min|max)/i)?.[1].toLowerCase();
-    
-    if (rangeMatch && operation) {
-      const range = rangeMatch[1];
-      let result;
-      
-      switch (operation) {
-        case 'sum':
-          result = this.excelFunctions.sum(range);
-          break;
-        case 'average':
-          result = this.excelFunctions.average(range);
-          break;
-        case 'count':
-          result = this.excelFunctions.count(range);
-          break;
-        case 'min':
-          result = this.excelFunctions.min(range);
-          break;
-        case 'max':
-          result = this.excelFunctions.max(range);
-          break;
-        default:
-          result = 0;
-      }
-      
-      return {
-        success: true,
-        message: `${operation.toUpperCase()} of ${range} = ${result}`,
-        data: { type: 'calculation', operation, range, result }
-      };
-    }
-    return { success: false, message: 'Specify range for calculation. Use: "Calculate SUM of range E1:E20"' };
-  }
-
-  private handleIfCommand(command: string): { success: boolean; message: string; data?: any } {
-    return {
-      success: true,
-      message: 'IF formula template: =IF(condition, true_value, false_value)',
-      data: { type: 'if_formula', template: '=IF(A1>10,"High","Low")' }
+    return { 
+      success: true, 
+      message: 'Conditional formatting template: Apply to range where condition is met. Example: "apply conditional formatting to B1:B20 where value > 100"',
+      data: { type: 'conditional_format', template: 'range where condition' }
     };
   }
 
@@ -389,6 +636,10 @@ export class CommandProcessor {
         data: { type: 'filter', criteria }
       };
     }
-    return { success: false, message: 'Specify filter criteria. Use: "Filter data where column A contains Sales"' };
+    return { 
+      success: true, 
+      message: 'Filter template: Specify filter criteria. Example: "filter data where column A contains Sales"',
+      data: { type: 'filter', template: 'where condition' }
+    };
   }
 }
