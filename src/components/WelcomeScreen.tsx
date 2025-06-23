@@ -105,20 +105,26 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, isLo
     {
       number: "1",
       title: "Import Your Data",
-      description: "Upload Excel, CSV, PDF, or other supported file formats",
-      icon: Upload
+      description: "Upload Excel, CSV, PDF, Word documents, or other supported file formats",
+      details: "Drag and drop your files or click to browse. We support all major spreadsheet formats plus document conversion.",
+      icon: Upload,
+      color: "from-cyan-500 to-blue-500"
     },
     {
       number: "2", 
-      title: "Ask Questions",
-      description: "Use natural language to query your data instantly",
-      icon: Search
+      title: "Ask Questions in Plain English",
+      description: "Use natural language to query your data instantly - no formulas required",
+      details: "Simply type what you want to know: 'Show me top sales by region' or 'Calculate average revenue'.",
+      icon: Search,
+      color: "from-blue-500 to-purple-500"
     },
     {
       number: "3",
-      title: "Get Insights",
-      description: "Receive AI-powered analytics and visualizations",
-      icon: BarChart3
+      title: "Get AI-Powered Insights",
+      description: "Receive instant analytics, visualizations, and actionable insights",
+      details: "View charts, pivot tables, statistical analysis, and forecasts generated automatically from your queries.",
+      icon: BarChart3,
+      color: "from-purple-500 to-pink-500"
     }
   ];
 
@@ -226,30 +232,80 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, isLo
             </div>
           </div>
 
-          {/* How It Works */}
+          {/* How It Works - Redesigned */}
           <div className="mb-16">
-            <h3 className="text-3xl font-bold text-white text-center mb-10">How It Works</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {steps.map((step, index) => {
-                const IconComponent = step.icon;
-                return (
-                  <div key={index} className="text-center group">
-                    <div className="relative mb-6">
-                      <div className="w-16 h-16 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full flex items-center justify-center mx-auto shadow-lg group-hover:scale-110 transition-transform duration-300">
-                        <IconComponent className="h-8 w-8 text-white" />
+            <div className="text-center mb-12">
+              <h3 className="text-4xl font-bold text-white mb-4">How It Works</h3>
+              <p className="text-xl text-slate-300 max-w-2xl mx-auto">
+                Get from data to insights in just three simple steps
+              </p>
+            </div>
+            
+            <div className="relative">
+              {/* Connection Lines */}
+              <div className="hidden lg:block absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-400/30 via-blue-400/30 to-purple-400/30 transform -translate-y-1/2"></div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+                {steps.map((step, index) => {
+                  const IconComponent = step.icon;
+                  return (
+                    <div key={index} className="relative group">
+                      {/* Step Card */}
+                      <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 hover:border-white/30 transition-all duration-300 hover:shadow-2xl transform hover:-translate-y-2">
+                        {/* Step Number & Icon */}
+                        <div className="relative mb-6">
+                          <div className={`w-20 h-20 bg-gradient-to-r ${step.color} rounded-full flex items-center justify-center mx-auto shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                            <IconComponent className="h-10 w-10 text-white" />
+                          </div>
+                          <div className="absolute -top-2 -right-2 w-8 h-8 bg-white border-2 border-cyan-500 rounded-full flex items-center justify-center text-sm font-bold text-cyan-600">
+                            {step.number}
+                          </div>
+                        </div>
+                        
+                        {/* Content */}
+                        <div className="text-center">
+                          <h4 className="text-2xl font-bold text-white mb-3">{step.title}</h4>
+                          <p className="text-slate-300 text-lg mb-4 leading-relaxed">{step.description}</p>
+                          <p className="text-slate-400 text-sm leading-relaxed">{step.details}</p>
+                        </div>
+                        
+                        {/* Visual Enhancement */}
+                        <div className="mt-6 flex justify-center">
+                          <div className="w-12 h-1 bg-gradient-to-r from-cyan-400 to-blue-400 rounded-full"></div>
+                        </div>
                       </div>
-                      <div className="absolute -top-2 -right-2 w-8 h-8 bg-white border-2 border-cyan-500 rounded-full flex items-center justify-center text-sm font-bold text-cyan-600">
-                        {step.number}
-                      </div>
+                      
+                      {/* Arrow for larger screens */}
                       {index < steps.length - 1 && (
-                        <div className="hidden md:block absolute top-8 left-full w-full h-0.5 bg-gradient-to-r from-cyan-400/50 to-blue-400/50 transform -translate-x-8"></div>
+                        <div className="hidden lg:block absolute top-1/2 -right-6 transform -translate-y-1/2 z-10">
+                          <ArrowRight className="h-8 w-8 text-cyan-400/60" />
+                        </div>
                       )}
                     </div>
-                    <h4 className="text-xl font-semibold text-white mb-3">{step.title}</h4>
-                    <p className="text-slate-300">{step.description}</p>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Additional Info */}
+            <div className="mt-12 text-center">
+              <div className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-xl p-6 border border-cyan-400/30 max-w-4xl mx-auto">
+                <h4 className="text-xl font-semibold text-white mb-3">Why Choose Excel Pro AI?</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+                  <div className="flex items-center space-x-2 justify-center">
+                    <CheckCircle className="h-5 w-5 text-cyan-400 flex-shrink-0" />
+                    <span className="text-slate-300">No technical expertise required</span>
                   </div>
-                );
-              })}
+                  <div className="flex items-center space-x-2 justify-center">
+                    <CheckCircle className="h-5 w-5 text-cyan-400 flex-shrink-0" />
+                    <span className="text-slate-300">Instant results in seconds</span>
+                  </div>
+                  <div className="flex items-center space-x-2 justify-center">
+                    <CheckCircle className="h-5 w-5 text-cyan-400 flex-shrink-0" />
+                    <span className="text-slate-300">100% privacy guaranteed</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
