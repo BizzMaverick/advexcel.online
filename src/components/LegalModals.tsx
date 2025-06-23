@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, FileText, Shield, Cookie, Heart, CheckCircle, AlertTriangle } from 'lucide-react';
+import { X, FileText, Shield, Cookie, Heart, CheckCircle, AlertTriangle, Mail } from 'lucide-react';
 
 interface LegalModalsProps {
   activeModal: 'terms' | 'privacy' | 'cookies' | 'refunds' | null;
@@ -76,11 +76,17 @@ export const LegalModals: React.FC<LegalModalsProps> = ({ activeModal, onClose }
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start space-x-3">
-              <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+              <Mail className="h-5 w-5 text-blue-600 mt-0.5" />
               <div>
                 <h4 className="font-medium text-blue-900">Contact Us</h4>
                 <p className="text-sm text-blue-800 mt-1">
-                  If you have any questions about these Terms of Service, please contact us at support@advexcel.online
+                  If you have any questions about these Terms of Service, please contact us at{' '}
+                  <a 
+                    href="mailto:contact@advexcel.online" 
+                    className="underline hover:text-blue-900"
+                  >
+                    contact@advexcel.online
+                  </a>
                 </p>
               </div>
             </div>
@@ -168,6 +174,24 @@ export const LegalModals: React.FC<LegalModalsProps> = ({ activeModal, onClose }
               <li>Export your account information</li>
             </ul>
           </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <Mail className="h-5 w-5 text-blue-600 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-blue-900">Privacy Questions?</h4>
+                <p className="text-sm text-blue-800 mt-1">
+                  If you have any questions about our privacy practices, please contact us at{' '}
+                  <a 
+                    href="mailto:contact@advexcel.online" 
+                    className="underline hover:text-blue-900"
+                  >
+                    contact@advexcel.online
+                  </a>
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )
     },
@@ -253,9 +277,15 @@ export const LegalModals: React.FC<LegalModalsProps> = ({ activeModal, onClose }
             <div className="flex items-start space-x-3">
               <Cookie className="h-5 w-5 text-blue-600 mt-0.5" />
               <div>
-                <h4 className="font-medium text-blue-900">Cookie Consent</h4>
+                <h4 className="font-medium text-blue-900">Cookie Questions?</h4>
                 <p className="text-sm text-blue-800 mt-1">
-                  By continuing to use our website, you consent to our use of cookies as described in this policy.
+                  If you have questions about our cookie usage, please contact us at{' '}
+                  <a 
+                    href="mailto:contact@advexcel.online" 
+                    className="underline hover:text-blue-900"
+                  >
+                    contact@advexcel.online
+                  </a>
                 </p>
               </div>
             </div>
@@ -319,7 +349,7 @@ export const LegalModals: React.FC<LegalModalsProps> = ({ activeModal, onClose }
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-3">3. Refund Process</h3>
             <ol className="list-decimal list-inside text-gray-700 space-y-2">
-              <li>Contact our support team at support@advexcel.online</li>
+              <li>Contact our support team at contact@advexcel.online</li>
               <li>Provide your account details and reason for refund</li>
               <li>We'll process your request within 2 business days</li>
               <li>Refunds are issued to the original payment method</li>
@@ -356,12 +386,18 @@ export const LegalModals: React.FC<LegalModalsProps> = ({ activeModal, onClose }
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start space-x-3">
-              <Heart className="h-5 w-5 text-blue-600 mt-0.5" />
+              <Mail className="h-5 w-5 text-blue-600 mt-0.5" />
               <div>
-                <h4 className="font-medium text-blue-900">Need Help?</h4>
+                <h4 className="font-medium text-blue-900">Need a Refund?</h4>
                 <p className="text-sm text-blue-800 mt-1">
-                  Before requesting a refund, please contact our support team. 
-                  We're often able to resolve issues and help you get the most out of Excel Analyzer Pro.
+                  Before requesting a refund, please contact our support team at{' '}
+                  <a 
+                    href="mailto:contact@advexcel.online" 
+                    className="underline hover:text-blue-900"
+                  >
+                    contact@advexcel.online
+                  </a>
+                  . We're often able to resolve issues and help you get the most out of Excel Analyzer Pro.
                 </p>
               </div>
             </div>
@@ -402,12 +438,21 @@ export const LegalModals: React.FC<LegalModalsProps> = ({ activeModal, onClose }
             <p className="text-sm text-gray-600">
               Last updated: {new Date().toLocaleDateString()}
             </p>
-            <button
-              onClick={onClose}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Close
-            </button>
+            <div className="flex items-center space-x-3">
+              <a 
+                href="mailto:contact@advexcel.online" 
+                className="text-sm text-blue-600 hover:text-blue-700 flex items-center space-x-1"
+              >
+                <Mail className="h-3 w-3" />
+                <span>Contact Support</span>
+              </a>
+              <button
+                onClick={onClose}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       </div>

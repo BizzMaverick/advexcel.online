@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, Send, X, Bot, User, Star, ThumbsUp, ThumbsDown, AlertCircle, Lightbulb, HelpCircle } from 'lucide-react';
+import { MessageCircle, Send, X, Bot, User, Star, ThumbsUp, ThumbsDown, AlertCircle, Lightbulb, HelpCircle, Mail } from 'lucide-react';
 import { ChatMessage, SuggestionFeedback } from '../types/chat';
 
 interface ChatBotProps {
@@ -49,7 +49,8 @@ export const ChatBot: React.FC<ChatBotProps> = ({ isVisible, onClose, onSuggesti
     { text: 'Natural language queries', type: 'help' },
     { text: 'Data privacy and security', type: 'help' },
     { text: 'Submit a suggestion', type: 'suggestion' },
-    { text: 'Report a bug', type: 'suggestion' }
+    { text: 'Report a bug', type: 'suggestion' },
+    { text: 'Contact support', type: 'contact' }
   ];
 
   const botResponses = {
@@ -63,7 +64,9 @@ export const ChatBot: React.FC<ChatBotProps> = ({ isVisible, onClose, onSuggesti
     
     'submit a suggestion': 'I\'d love to hear your suggestions! Click the "Submit Suggestion" button below to share:\n\n• New features you\'d like to see\n• Improvements to existing functionality\n• User experience enhancements\n• Any other ideas\n\nYour feedback helps make the app better for everyone!',
     
-    'report a bug': 'Found a bug? Please report it so we can fix it:\n\n• Describe what happened\n• Steps to reproduce the issue\n• What you expected to happen\n• Any error messages you saw\n\nClick "Submit Suggestion" and select "Bug" as the category.'
+    'report a bug': 'Found a bug? Please report it so we can fix it:\n\n• Describe what happened\n• Steps to reproduce the issue\n• What you expected to happen\n• Any error messages you saw\n\nClick "Submit Suggestion" and select "Bug" as the category.',
+
+    'contact support': 'Need additional help? You can reach our support team:\n\n📧 Email: contact@advexcel.online\n\nOur team typically responds within 24 hours. For urgent issues, please include "URGENT" in your subject line.\n\nYou can also use the suggestion form below to send us detailed feedback or questions.'
   };
 
   const generateBotResponse = (userMessage: string): string => {
@@ -100,17 +103,21 @@ export const ChatBot: React.FC<ChatBotProps> = ({ isVisible, onClose, onSuggesti
     if (lowerMessage.includes('bug') || lowerMessage.includes('error') || lowerMessage.includes('problem')) {
       return botResponses['report a bug'];
     }
+
+    if (lowerMessage.includes('contact') || lowerMessage.includes('support') || lowerMessage.includes('help') || lowerMessage.includes('email')) {
+      return botResponses['contact support'];
+    }
     
     if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
       return 'Hello! I\'m here to help you with Excel Analyzer Pro. What would you like to know about?';
     }
     
     if (lowerMessage.includes('thank')) {
-      return 'You\'re welcome! Is there anything else I can help you with?';
+      return 'You\'re welcome! Is there anything else I can help you with? You can also contact our support team at contact@advexcel.online for additional assistance.';
     }
     
     // Default response
-    return 'I\'m here to help! You can ask me about:\n\n• How to use app features\n• Excel operations and formulas\n• Data import and export\n• Privacy and security\n• Submitting suggestions\n\nOr choose from the quick replies below.';
+    return 'I\'m here to help! You can ask me about:\n\n• How to use app features\n• Excel operations and formulas\n• Data import and export\n• Privacy and security\n• Submitting suggestions\n\nFor additional support, email us at contact@advexcel.online\n\nOr choose from the quick replies below.';
   };
 
   const handleSendMessage = async () => {
@@ -149,6 +156,11 @@ export const ChatBot: React.FC<ChatBotProps> = ({ isVisible, onClose, onSuggesti
       return;
     }
 
+    if (reply.type === 'contact') {
+      window.open('mailto:contact@advexcel.online?subject=Excel Analyzer Pro - Support Request', '_blank');
+      return;
+    }
+
     setInputMessage(reply.text);
     setTimeout(() => handleSendMessage(), 100);
   };
@@ -170,7 +182,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ isVisible, onClose, onSuggesti
 
     const confirmationMessage: ChatMessage = {
       id: Date.now().toString(),
-      content: `Thank you for your ${suggestionData.category} suggestion! I've forwarded it to the development team. They'll review it and consider it for future updates.\n\nYour feedback helps make Excel Analyzer Pro better for everyone! 🚀`,
+      content: `Thank you for your ${suggestionData.category} suggestion! I've forwarded it to the development team. They'll review it and consider it for future updates.\n\nYour feedback helps make Excel Analyzer Pro better for everyone! 🚀\n\nFor urgent matters, you can also email us directly at contact@advexcel.online`,
       sender: 'bot',
       timestamp: new Date(),
       type: 'text'
@@ -267,7 +279,9 @@ export const ChatBot: React.FC<ChatBotProps> = ({ isVisible, onClose, onSuggesti
                 onClick={() => handleQuickReply(reply)}
                 className="text-xs bg-blue-50 text-blue-700 px-3 py-1 rounded-full hover:bg-blue-100 transition-colors flex items-center space-x-1"
               >
-                {reply.type === 'help' ? <HelpCircle className="h-3 w-3" /> : <Lightbulb className="h-3 w-3" />}
+                {reply.type === 'help' ? <HelpCircle className="h-3 w-3" /> : 
+                 reply.type === 'contact' ? <Mail className="h-3 w-3" /> :
+                 <Lightbulb className="h-3 w-3" />}
                 <span>{reply.text}</span>
               </button>
             ))}
@@ -316,6 +330,15 @@ export const ChatBot: React.FC<ChatBotProps> = ({ isVisible, onClose, onSuggesti
                 Cancel
               </button>
             </div>
+            <div className="text-xs text-gray-500 text-center">
+              Or email us directly at{' '}
+              <a 
+                href="mailto:contact@advexcel.online" 
+                className="text-blue-600 hover:text-blue-700"
+              >
+                contact@advexcel.online
+              </a>
+            </div>
           </div>
         </div>
       )}
@@ -340,6 +363,15 @@ export const ChatBot: React.FC<ChatBotProps> = ({ isVisible, onClose, onSuggesti
             >
               <Send className="h-4 w-4" />
             </button>
+          </div>
+          <div className="text-xs text-gray-500 text-center mt-2">
+            Need more help? Email{' '}
+            <a 
+              href="mailto:contact@advexcel.online" 
+              className="text-blue-600 hover:text-blue-700"
+            >
+              contact@advexcel.online
+            </a>
           </div>
         </div>
       )}

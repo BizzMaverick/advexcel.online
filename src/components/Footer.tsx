@@ -61,32 +61,41 @@ export const Footer: React.FC = () => {
 
           {/* Contact & Legal */}
           <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-white">Legal & Support</h4>
-            <ul className="space-y-2">
-              {legalLinks.map((link) => (
-                <li key={link.name}>
-                  <a 
-                    href={link.href} 
-                    className="text-gray-300 hover:text-blue-400 transition-colors text-sm flex items-center space-x-2"
-                  >
-                    {link.name === 'Terms of Service' && <FileText className="h-3 w-3" />}
-                    {link.name === 'Privacy Policy' && <Shield className="h-3 w-3" />}
-                    {link.name === 'Cookie Policy' && <Cookie className="h-3 w-3" />}
-                    {link.name === 'Refund Policy' && <Heart className="h-3 w-3" />}
-                    <span>{link.name}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-            <div className="pt-2 space-y-1">
-              <div className="flex items-center space-x-2 text-sm text-gray-400">
-                <Mail className="h-3 w-3" />
-                <span>support@advexcel.online</span>
+            <h4 className="text-lg font-semibold text-white">Contact & Support</h4>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2 text-sm text-gray-300">
+                <Mail className="h-4 w-4 text-blue-400" />
+                <a 
+                  href="mailto:contact@advexcel.online" 
+                  className="hover:text-blue-400 transition-colors"
+                >
+                  contact@advexcel.online
+                </a>
               </div>
-              <div className="flex items-center space-x-2 text-sm text-gray-400">
-                <Phone className="h-3 w-3" />
+              <div className="flex items-center space-x-2 text-sm text-gray-300">
+                <Phone className="h-4 w-4 text-blue-400" />
                 <span>+91 9999999999</span>
               </div>
+            </div>
+            
+            <div className="pt-2">
+              <h5 className="text-sm font-medium text-white mb-2">Legal</h5>
+              <ul className="space-y-1">
+                {legalLinks.map((link) => (
+                  <li key={link.name}>
+                    <a 
+                      href={link.href} 
+                      className="text-gray-300 hover:text-blue-400 transition-colors text-sm flex items-center space-x-2"
+                    >
+                      {link.name === 'Terms of Service' && <FileText className="h-3 w-3" />}
+                      {link.name === 'Privacy Policy' && <Shield className="h-3 w-3" />}
+                      {link.name === 'Cookie Policy' && <Cookie className="h-3 w-3" />}
+                      {link.name === 'Refund Policy' && <Heart className="h-3 w-3" />}
+                      <span>{link.name}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
@@ -106,11 +115,16 @@ export const Footer: React.FC = () => {
               </p>
             </div>
 
-            {/* Cookie Notice */}
+            {/* Contact Info */}
             <div className="flex items-center space-x-4 text-xs text-gray-500">
               <div className="flex items-center space-x-2">
-                <Cookie className="h-3 w-3" />
-                <span>We use cookies to enhance your experience</span>
+                <Mail className="h-3 w-3" />
+                <a 
+                  href="mailto:contact@advexcel.online" 
+                  className="hover:text-blue-400 transition-colors"
+                >
+                  Questions? Contact us
+                </a>
               </div>
               <button className="text-blue-400 hover:text-blue-300 transition-colors">
                 Cookie Settings
