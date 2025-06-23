@@ -19,7 +19,6 @@ import { SubscriptionBanner } from './components/SubscriptionBanner';
 import { ReferralPanel } from './components/ReferralPanel';
 import { Footer } from './components/Footer';
 import { LegalModals } from './components/LegalModals';
-import { GoogleSheetsProcessor } from './components/GoogleSheetsProcessor';
 import { FormulaAssistant } from './components/FormulaAssistant';
 import { SpreadsheetData, Cell } from './types/spreadsheet';
 import { User } from './types/auth';
@@ -49,9 +48,6 @@ function App() {
   
   // Legal modals state
   const [activeLegalModal, setActiveLegalModal] = useState<'terms' | 'privacy' | 'cookies' | 'refunds' | null>(null);
-  
-  // Google Sheets Processor state
-  const [showGoogleSheetsProcessor, setShowGoogleSheetsProcessor] = useState(false);
   
   // Formula Assistant state
   const [showFormulaAssistant, setShowFormulaAssistant] = useState(false);
@@ -884,14 +880,6 @@ function App() {
               </button>
 
               <button
-                onClick={() => setShowGoogleSheetsProcessor(true)}
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors"
-              >
-                <FileSpreadsheet className="h-4 w-4" />
-                <span>Google Sheets AI</span>
-              </button>
-
-              <button
                 onClick={() => setShowReferralPanel(true)}
                 className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors"
               >
@@ -1050,12 +1038,6 @@ function App() {
         onCellFormat={handleCellFormat}
         isVisible={showFormulaAssistant}
         onClose={() => setShowFormulaAssistant(false)}
-      />
-
-      {/* Google Sheets Processor */}
-      <GoogleSheetsProcessor
-        isVisible={showGoogleSheetsProcessor}
-        onClose={() => setShowGoogleSheetsProcessor(false)}
       />
 
       {/* Subscription Modal */}
