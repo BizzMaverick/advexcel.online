@@ -764,14 +764,20 @@ function App() {
           onAuthSuccess={handleAuthSuccess}
         />
         {!showAuthModal && (
-          <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+          <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex items-center justify-center">
             <div className="text-center">
-              <FileSpreadsheet className="h-16 w-16 text-blue-600 mx-auto mb-4" />
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">Excel Analyzer Pro</h1>
-              <p className="text-gray-600 mb-6">Advanced spreadsheet analysis with AI-powered insights</p>
+              <div className="mb-6">
+                <img 
+                  src="/Tech Company Logo Excel Pro AI, Blue and Silver.png" 
+                  alt="Excel Pro AI" 
+                  className="h-24 w-24 mx-auto mb-4"
+                />
+              </div>
+              <h1 className="text-3xl font-bold text-white mb-4">Excel Pro AI</h1>
+              <p className="text-slate-300 mb-6">Advanced spreadsheet analysis with AI-powered insights</p>
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-6 py-3 rounded-lg hover:from-cyan-600 hover:to-blue-700 transition-all duration-300 shadow-lg"
               >
                 Get Started
               </button>
@@ -793,10 +799,10 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Privacy Banner */}
       {showPrivacyBanner && (
-        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 px-4 z-50 shadow-lg">
+        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-cyan-600 to-blue-600 text-white py-2 px-4 z-50 shadow-lg">
           <div className="flex items-center justify-between max-w-7xl mx-auto">
             <div className="flex items-center space-x-3">
               <Shield className="h-4 w-4 flex-shrink-0" />
@@ -814,7 +820,7 @@ function App() {
             </div>
             <button
               onClick={dismissPrivacyBanner}
-              className="text-white hover:text-green-100 transition-colors ml-4 flex-shrink-0"
+              className="text-white hover:text-cyan-100 transition-colors ml-4 flex-shrink-0"
               title="Dismiss privacy notice"
             >
               <X className="h-4 w-4" />
@@ -852,7 +858,7 @@ function App() {
         trialInfo && !isSubscribed ? 'mt-12' : ''
       }`}>
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <header className="bg-white border-b border-slate-200 px-6 py-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div 
               className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-opacity duration-200"
@@ -860,12 +866,16 @@ function App() {
               title="Click to refresh and start new analysis"
             >
               <div className="relative">
-                <FileSpreadsheet className="h-8 w-8 text-blue-600" />
-                <RefreshCw className="h-3 w-3 text-blue-400 absolute -top-1 -right-1" />
+                <img 
+                  src="/Tech Company Logo Excel Pro AI, Blue and Silver.png" 
+                  alt="Excel Pro AI" 
+                  className="h-10 w-10"
+                />
+                <RefreshCw className="h-3 w-3 text-cyan-500 absolute -top-1 -right-1" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Excel Analyzer Pro</h1>
-                <p className="text-sm text-gray-500">Advanced spreadsheet analysis with natural language queries and AI-powered insights</p>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-blue-600 bg-clip-text text-transparent">Excel Pro AI</h1>
+                <p className="text-sm text-slate-500">Advanced spreadsheet analysis with natural language queries and AI-powered insights</p>
               </div>
             </div>
             
@@ -873,7 +883,7 @@ function App() {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => setShowFormulaAssistant(true)}
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-lg hover:bg-cyan-100 transition-colors"
               >
                 <Calculator className="h-4 w-4" />
                 <span>Formula Assistant</span>
@@ -889,7 +899,7 @@ function App() {
 
               <button
                 onClick={() => setShowChatBot(true)}
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
               >
                 <MessageCircle className="h-4 w-4" />
                 <span>Help</span>
@@ -897,7 +907,7 @@ function App() {
               
               <button
                 onClick={() => setShowRatingModal(true)}
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
               >
                 <Star className="h-4 w-4" />
                 <span>Rate</span>
@@ -913,11 +923,11 @@ function App() {
                 </button>
               )}
               
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <Shield className="h-4 w-4 text-green-600" />
+              <div className="flex items-center space-x-2 text-sm text-slate-600">
+                <Shield className="h-4 w-4 text-cyan-600" />
                 <span>{user.email || user.phoneNumber}</span>
                 {isSubscribed && (
-                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                  <span className="bg-cyan-100 text-cyan-800 px-2 py-1 rounded-full text-xs font-medium">
                     Pro
                   </span>
                 )}
@@ -951,20 +961,20 @@ function App() {
         )}
 
         {/* Command Bar */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="bg-white border-b border-slate-200 px-6 py-4">
           <div className="mb-2">
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
+            <div className="flex items-center space-x-2 text-sm text-slate-600">
               <Search className="h-4 w-4" />
               <span className="font-medium">Try natural language queries and Excel functions:</span>
-              <span className="text-blue-600">"perform vlookup"</span>
-              <span className="text-gray-400">•</span>
-              <span className="text-blue-600">"calculate sum of range A1:A10"</span>
-              <span className="text-gray-400">•</span>
-              <span className="text-blue-600">"apply if formula"</span>
+              <span className="text-cyan-600">"perform vlookup"</span>
+              <span className="text-slate-400">•</span>
+              <span className="text-cyan-600">"calculate sum of range A1:A10"</span>
+              <span className="text-slate-400">•</span>
+              <span className="text-cyan-600">"apply if formula"</span>
               {workbook && workbook.worksheets.length > 1 && (
                 <>
-                  <span className="text-gray-400">•</span>
-                  <span className="text-blue-600">"analyze Sheet2 data"</span>
+                  <span className="text-slate-400">•</span>
+                  <span className="text-cyan-600">"analyze Sheet2 data"</span>
                 </>
               )}
             </div>
@@ -1082,8 +1092,8 @@ function App() {
       {isLoading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg p-6 flex items-center space-x-3">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            <span className="text-gray-700">Processing file...</span>
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-600"></div>
+            <span className="text-slate-700">Processing file...</span>
           </div>
         </div>
       )}
@@ -1095,7 +1105,7 @@ function App() {
             key={notification.id}
             className={`
               px-4 py-3 rounded-lg shadow-lg transition-all duration-300 max-w-md
-              ${notification.type === 'success' ? 'bg-green-500 text-white' :
+              ${notification.type === 'success' ? 'bg-cyan-500 text-white' :
                 notification.type === 'error' ? 'bg-red-500 text-white' :
                 'bg-blue-500 text-white'}
             `}
