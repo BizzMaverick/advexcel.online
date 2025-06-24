@@ -35,43 +35,44 @@ export const SheetCreator: React.FC<SheetCreatorProps> = ({ onCreateSheet, isVis
         'A2': { id: 'A2', row: 2, col: 1, value: 'Income', type: 'text' as const },
         'B2': { id: 'B2', row: 2, col: 2, value: 5000, type: 'number' as const },
         'C2': { id: 'C2', row: 2, col: 3, value: 4800, type: 'number' as const },
-        'D2': { id: 'D2', row: 2, col: 4, value: '=C2-B2', type: 'formula' as const, formula: '=C2-B2' },
-        'E2': { id: 'E2', row: 2, col: 5, value: '=IF(D2<0,"Under","Over")', type: 'formula' as const, formula: '=IF(D2<0,"Under","Over")' },
+        'D2': { id: 'D2', row: 2, col: 4, value: -200, type: 'number' as const },
+        'E2': { id: 'E2', row: 2, col: 5, value: 'Under Budget', type: 'text' as const },
         
         'A3': { id: 'A3', row: 3, col: 1, value: 'Housing', type: 'text' as const },
         'B3': { id: 'B3', row: 3, col: 2, value: 1500, type: 'number' as const },
         'C3': { id: 'C3', row: 3, col: 3, value: 1600, type: 'number' as const },
-        'D3': { id: 'D3', row: 3, col: 4, value: '=C3-B3', type: 'formula' as const, formula: '=C3-B3' },
-        'E3': { id: 'E3', row: 3, col: 5, value: '=IF(D3<0,"Under","Over")', type: 'formula' as const, formula: '=IF(D3<0,"Under","Over")' },
+        'D3': { id: 'D3', row: 3, col: 4, value: 100, type: 'number' as const },
+        'E3': { id: 'E3', row: 3, col: 5, value: 'Over Budget', type: 'text' as const },
         
         'A4': { id: 'A4', row: 4, col: 1, value: 'Transportation', type: 'text' as const },
         'B4': { id: 'B4', row: 4, col: 2, value: 400, type: 'number' as const },
         'C4': { id: 'C4', row: 4, col: 3, value: 350, type: 'number' as const },
-        'D4': { id: 'D4', row: 4, col: 4, value: '=C4-B4', type: 'formula' as const, formula: '=C4-B4' },
-        'E4': { id: 'E4', row: 4, col: 5, value: '=IF(D4<0,"Under","Over")', type: 'formula' as const, formula: '=IF(D4<0,"Under","Over")' },
+        'D4': { id: 'D4', row: 4, col: 4, value: -50, type: 'number' as const },
+        'E4': { id: 'E4', row: 4, col: 5, value: 'Under Budget', type: 'text' as const },
         
         'A5': { id: 'A5', row: 5, col: 1, value: 'Food & Dining', type: 'text' as const },
         'B5': { id: 'B5', row: 5, col: 2, value: 600, type: 'number' as const },
         'C5': { id: 'C5', row: 5, col: 3, value: 720, type: 'number' as const },
-        'D5': { id: 'D5', row: 5, col: 4, value: '=C5-B5', type: 'formula' as const, formula: '=C5-B5' },
-        'E5': { id: 'E5', row: 5, col: 5, value: '=IF(D5<0,"Under","Over")', type: 'formula' as const, formula: '=IF(D5<0,"Under","Over")' },
+        'D5': { id: 'D5', row: 5, col: 4, value: 120, type: 'number' as const },
+        'E5': { id: 'E5', row: 5, col: 5, value: 'Over Budget', type: 'text' as const },
         
         'A6': { id: 'A6', row: 6, col: 1, value: 'Utilities', type: 'text' as const },
         'B6': { id: 'B6', row: 6, col: 2, value: 200, type: 'number' as const },
         'C6': { id: 'C6', row: 6, col: 3, value: 180, type: 'number' as const },
-        'D6': { id: 'D6', row: 6, col: 4, value: '=C6-B6', type: 'formula' as const, formula: '=C6-B6' },
-        'E6': { id: 'E6', row: 6, col: 5, value: '=IF(D6<0,"Under","Over")', type: 'formula' as const, formula: '=IF(D6<0,"Under","Over")' },
+        'D6': { id: 'D6', row: 6, col: 4, value: -20, type: 'number' as const },
+        'E6': { id: 'E6', row: 6, col: 5, value: 'Under Budget', type: 'text' as const },
         
         'A7': { id: 'A7', row: 7, col: 1, value: 'Entertainment', type: 'text' as const },
         'B7': { id: 'B7', row: 7, col: 2, value: 300, type: 'number' as const },
         'C7': { id: 'C7', row: 7, col: 3, value: 250, type: 'number' as const },
-        'D7': { id: 'D7', row: 7, col: 4, value: '=C7-B7', type: 'formula' as const, formula: '=C7-B7' },
-        'E7': { id: 'E7', row: 7, col: 5, value: '=IF(D7<0,"Under","Over")', type: 'formula' as const, formula: '=IF(D7<0,"Under","Over")' },
+        'D7': { id: 'D7', row: 7, col: 4, value: -50, type: 'number' as const },
+        'E7': { id: 'E7', row: 7, col: 5, value: 'Under Budget', type: 'text' as const },
         
         'A9': { id: 'A9', row: 9, col: 1, value: 'TOTALS', type: 'text' as const },
-        'B9': { id: 'B9', row: 9, col: 2, value: '=SUM(B2:B7)', type: 'formula' as const, formula: '=SUM(B2:B7)' },
-        'C9': { id: 'C9', row: 9, col: 3, value: '=SUM(C2:C7)', type: 'formula' as const, formula: '=SUM(C2:C7)' },
-        'D9': { id: 'D9', row: 9, col: 4, value: '=SUM(D2:D7)', type: 'formula' as const, formula: '=SUM(D2:D7)' }
+        'B9': { id: 'B9', row: 9, col: 2, value: 8000, type: 'number' as const },
+        'C9': { id: 'C9', row: 9, col: 3, value: 7900, type: 'number' as const },
+        'D9': { id: 'D9', row: 9, col: 4, value: -100, type: 'number' as const },
+        'E9': { id: 'E9', row: 9, col: 5, value: 'Under Budget', type: 'text' as const }
       }
     },
     sales: {
@@ -94,7 +95,7 @@ export const SheetCreator: React.FC<SheetCreatorProps> = ({ onCreateSheet, isVis
         'C2': { id: 'C2', row: 2, col: 3, value: 'TechCorp Inc', type: 'text' as const },
         'D2': { id: 'D2', row: 2, col: 4, value: 5, type: 'number' as const },
         'E2': { id: 'E2', row: 2, col: 5, value: 1200, type: 'number' as const },
-        'F2': { id: 'F2', row: 2, col: 6, value: '=D2*E2', type: 'formula' as const, formula: '=D2*E2' },
+        'F2': { id: 'F2', row: 2, col: 6, value: 6000, type: 'number' as const },
         'G2': { id: 'G2', row: 2, col: 7, value: 'North', type: 'text' as const },
         'H2': { id: 'H2', row: 2, col: 8, value: 'John Smith', type: 'text' as const },
         
@@ -103,7 +104,7 @@ export const SheetCreator: React.FC<SheetCreatorProps> = ({ onCreateSheet, isVis
         'C3': { id: 'C3', row: 3, col: 3, value: 'StartupXYZ', type: 'text' as const },
         'D3': { id: 'D3', row: 3, col: 4, value: 25, type: 'number' as const },
         'E3': { id: 'E3', row: 3, col: 5, value: 50, type: 'number' as const },
-        'F3': { id: 'F3', row: 3, col: 6, value: '=D3*E3', type: 'formula' as const, formula: '=D3*E3' },
+        'F3': { id: 'F3', row: 3, col: 6, value: 1250, type: 'number' as const },
         'G3': { id: 'G3', row: 3, col: 7, value: 'South', type: 'text' as const },
         'H3': { id: 'H3', row: 3, col: 8, value: 'Jane Doe', type: 'text' as const },
         
@@ -112,13 +113,13 @@ export const SheetCreator: React.FC<SheetCreatorProps> = ({ onCreateSheet, isVis
         'C4': { id: 'C4', row: 4, col: 3, value: 'Design Studio', type: 'text' as const },
         'D4': { id: 'D4', row: 4, col: 4, value: 3, type: 'number' as const },
         'E4': { id: 'E4', row: 4, col: 5, value: 450, type: 'number' as const },
-        'F4': { id: 'F4', row: 4, col: 6, value: '=D4*E4', type: 'formula' as const, formula: '=D4*E4' },
+        'F4': { id: 'F4', row: 4, col: 6, value: 1350, type: 'number' as const },
         'G4': { id: 'G4', row: 4, col: 7, value: 'East', type: 'text' as const },
         'H4': { id: 'H4', row: 4, col: 8, value: 'Mike Johnson', type: 'text' as const },
         
         'A6': { id: 'A6', row: 6, col: 1, value: 'SUMMARY', type: 'text' as const },
         'E6': { id: 'E6', row: 6, col: 5, value: 'Total Revenue:', type: 'text' as const },
-        'F6': { id: 'F6', row: 6, col: 6, value: '=SUM(F2:F4)', type: 'formula' as const, formula: '=SUM(F2:F4)' }
+        'F6': { id: 'F6', row: 6, col: 6, value: 8600, type: 'number' as const }
       }
     },
     inventory: {
@@ -142,8 +143,8 @@ export const SheetCreator: React.FC<SheetCreatorProps> = ({ onCreateSheet, isVis
         'D2': { id: 'D2', row: 2, col: 4, value: 25, type: 'number' as const },
         'E2': { id: 'E2', row: 2, col: 5, value: 10, type: 'number' as const },
         'F2': { id: 'F2', row: 2, col: 6, value: 150, type: 'number' as const },
-        'G2': { id: 'G2', row: 2, col: 7, value: '=D2*F2', type: 'formula' as const, formula: '=D2*F2' },
-        'H2': { id: 'H2', row: 2, col: 8, value: '=IF(D2<E2,"Low Stock","OK")', type: 'formula' as const, formula: '=IF(D2<E2,"Low Stock","OK")' },
+        'G2': { id: 'G2', row: 2, col: 7, value: 3750, type: 'number' as const },
+        'H2': { id: 'H2', row: 2, col: 8, value: 'OK', type: 'text' as const },
         
         'A3': { id: 'A3', row: 3, col: 1, value: 'ITM002', type: 'text' as const },
         'B3': { id: 'B3', row: 3, col: 2, value: 'Laptop Stand', type: 'text' as const },
@@ -151,8 +152,8 @@ export const SheetCreator: React.FC<SheetCreatorProps> = ({ onCreateSheet, isVis
         'D3': { id: 'D3', row: 3, col: 4, value: 8, type: 'number' as const },
         'E3': { id: 'E3', row: 3, col: 5, value: 15, type: 'number' as const },
         'F3': { id: 'F3', row: 3, col: 6, value: 45, type: 'number' as const },
-        'G3': { id: 'G3', row: 3, col: 7, value: '=D3*F3', type: 'formula' as const, formula: '=D3*F3' },
-        'H3': { id: 'H3', row: 3, col: 8, value: '=IF(D3<E3,"Low Stock","OK")', type: 'formula' as const, formula: '=IF(D3<E3,"Low Stock","OK")' },
+        'G3': { id: 'G3', row: 3, col: 7, value: 360, type: 'number' as const },
+        'H3': { id: 'H3', row: 3, col: 8, value: 'Low Stock', type: 'text' as const },
         
         'A4': { id: 'A4', row: 4, col: 1, value: 'ITM003', type: 'text' as const },
         'B4': { id: 'B4', row: 4, col: 2, value: 'Wireless Keyboard', type: 'text' as const },
@@ -160,12 +161,12 @@ export const SheetCreator: React.FC<SheetCreatorProps> = ({ onCreateSheet, isVis
         'D4': { id: 'D4', row: 4, col: 4, value: 30, type: 'number' as const },
         'E4': { id: 'E4', row: 4, col: 5, value: 20, type: 'number' as const },
         'F4': { id: 'F4', row: 4, col: 6, value: 75, type: 'number' as const },
-        'G4': { id: 'G4', row: 4, col: 7, value: '=D4*F4', type: 'formula' as const, formula: '=D4*F4' },
-        'H4': { id: 'H4', row: 4, col: 8, value: '=IF(D4<E4,"Low Stock","OK")', type: 'formula' as const, formula: '=IF(D4<E4,"Low Stock","OK")' },
+        'G4': { id: 'G4', row: 4, col: 7, value: 2250, type: 'number' as const },
+        'H4': { id: 'H4', row: 4, col: 8, value: 'OK', type: 'text' as const },
         
         'A6': { id: 'A6', row: 6, col: 1, value: 'TOTALS', type: 'text' as const },
         'F6': { id: 'F6', row: 6, col: 6, value: 'Total Inventory Value:', type: 'text' as const },
-        'G6': { id: 'G6', row: 6, col: 7, value: '=SUM(G2:G4)', type: 'formula' as const, formula: '=SUM(G2:G4)' }
+        'G6': { id: 'G6', row: 6, col: 7, value: 6360, type: 'number' as const }
       }
     },
     employee: {
@@ -212,9 +213,9 @@ export const SheetCreator: React.FC<SheetCreatorProps> = ({ onCreateSheet, isVis
         
         'A6': { id: 'A6', row: 6, col: 1, value: 'STATISTICS', type: 'text' as const },
         'D6': { id: 'D6', row: 6, col: 4, value: 'Average Salary:', type: 'text' as const },
-        'E6': { id: 'E6', row: 6, col: 5, value: '=AVERAGE(E2:E4)', type: 'formula' as const, formula: '=AVERAGE(E2:E4)' },
+        'E6': { id: 'E6', row: 6, col: 5, value: 65000, type: 'number' as const },
         'D7': { id: 'D7', row: 7, col: 4, value: 'Avg Performance:', type: 'text' as const },
-        'E7': { id: 'E7', row: 7, col: 5, value: '=AVERAGE(G2:G4)', type: 'formula' as const, formula: '=AVERAGE(G2:G4)' }
+        'E7': { id: 'E7', row: 7, col: 5, value: 4.5, type: 'number' as const }
       }
     },
     project: {
@@ -239,7 +240,7 @@ export const SheetCreator: React.FC<SheetCreatorProps> = ({ onCreateSheet, isVis
         'E2': { id: 'E2', row: 2, col: 5, value: 75, type: 'number' as const },
         'F2': { id: 'F2', row: 2, col: 6, value: 50000, type: 'number' as const },
         'G2': { id: 'G2', row: 2, col: 7, value: 37500, type: 'number' as const },
-        'H2': { id: 'H2', row: 2, col: 8, value: '=IF(E2=100,"Complete",IF(E2>50,"On Track","At Risk"))', type: 'formula' as const, formula: '=IF(E2=100,"Complete",IF(E2>50,"On Track","At Risk"))' },
+        'H2': { id: 'H2', row: 2, col: 8, value: 'On Track', type: 'text' as const },
         
         'A3': { id: 'A3', row: 3, col: 1, value: 'PRJ002', type: 'text' as const },
         'B3': { id: 'B3', row: 3, col: 2, value: 'Mobile App Development', type: 'text' as const },
@@ -248,7 +249,7 @@ export const SheetCreator: React.FC<SheetCreatorProps> = ({ onCreateSheet, isVis
         'E3': { id: 'E3', row: 3, col: 5, value: 45, type: 'number' as const },
         'F3': { id: 'F3', row: 3, col: 6, value: 80000, type: 'number' as const },
         'G3': { id: 'G3', row: 3, col: 7, value: 36000, type: 'number' as const },
-        'H3': { id: 'H3', row: 3, col: 8, value: '=IF(E3=100,"Complete",IF(E3>50,"On Track","At Risk"))', type: 'formula' as const, formula: '=IF(E3=100,"Complete",IF(E3>50,"On Track","At Risk"))' },
+        'H3': { id: 'H3', row: 3, col: 8, value: 'At Risk', type: 'text' as const },
         
         'A4': { id: 'A4', row: 4, col: 1, value: 'PRJ003', type: 'text' as const },
         'B4': { id: 'B4', row: 4, col: 2, value: 'Database Migration', type: 'text' as const },
@@ -257,13 +258,13 @@ export const SheetCreator: React.FC<SheetCreatorProps> = ({ onCreateSheet, isVis
         'E4': { id: 'E4', row: 4, col: 5, value: 100, type: 'number' as const },
         'F4': { id: 'F4', row: 4, col: 6, value: 25000, type: 'number' as const },
         'G4': { id: 'G4', row: 4, col: 7, value: 23000, type: 'number' as const },
-        'H4': { id: 'H4', row: 4, col: 8, value: '=IF(E4=100,"Complete",IF(E4>50,"On Track","At Risk"))', type: 'formula' as const, formula: '=IF(E4=100,"Complete",IF(E4>50,"On Track","At Risk"))' },
+        'H4': { id: 'H4', row: 4, col: 8, value: 'Complete', type: 'text' as const },
         
         'A6': { id: 'A6', row: 6, col: 1, value: 'SUMMARY', type: 'text' as const },
         'E6': { id: 'E6', row: 6, col: 5, value: 'Total Budget:', type: 'text' as const },
-        'F6': { id: 'F6', row: 6, col: 6, value: '=SUM(F2:F4)', type: 'formula' as const, formula: '=SUM(F2:F4)' },
+        'F6': { id: 'F6', row: 6, col: 6, value: 155000, type: 'number' as const },
         'E7': { id: 'E7', row: 7, col: 5, value: 'Total Spent:', type: 'text' as const },
-        'F7': { id: 'F7', row: 7, col: 6, value: '=SUM(G2:G4)', type: 'formula' as const, formula: '=SUM(G2:G4)' }
+        'F7': { id: 'F7', row: 7, col: 6, value: 96500, type: 'number' as const }
       }
     },
     expense: {
@@ -306,9 +307,9 @@ export const SheetCreator: React.FC<SheetCreatorProps> = ({ onCreateSheet, isVis
         
         'A6': { id: 'A6', row: 6, col: 1, value: 'TOTALS', type: 'text' as const },
         'C6': { id: 'C6', row: 6, col: 3, value: 'Total Expenses:', type: 'text' as const },
-        'D6': { id: 'D6', row: 6, col: 4, value: '=SUM(D2:D4)', type: 'formula' as const, formula: '=SUM(D2:D4)' },
+        'D6': { id: 'D6', row: 6, col: 4, value: 535.49, type: 'number' as const },
         'C7': { id: 'C7', row: 7, col: 3, value: 'Tax Deductible:', type: 'text' as const },
-        'D7': { id: 'D7', row: 7, col: 4, value: '=SUMIF(G2:G4,"Yes",D2:D4)', type: 'formula' as const, formula: '=SUMIF(G2:G4,"Yes",D2:D4)' }
+        'D7': { id: 'D7', row: 7, col: 4, value: 535.49, type: 'number' as const }
       }
     },
     schedule: {
@@ -373,6 +374,36 @@ export const SheetCreator: React.FC<SheetCreatorProps> = ({ onCreateSheet, isVis
     setSheetName('');
     setTemplate('blank');
     onClose();
+  };
+
+  const getPreviewData = () => {
+    const selectedTemplate = templates[template as keyof typeof templates];
+    if (template === 'blank' || !selectedTemplate.data) return null;
+
+    // Get first few rows for preview
+    const cells = selectedTemplate.data;
+    const rows: string[][] = [];
+    
+    // Find max row and col
+    let maxRow = 0;
+    let maxCol = 0;
+    Object.values(cells).forEach(cell => {
+      maxRow = Math.max(maxRow, cell.row);
+      maxCol = Math.max(maxCol, cell.col);
+    });
+
+    // Build preview grid (first 4 rows, first 4 cols)
+    for (let row = 1; row <= Math.min(4, maxRow); row++) {
+      const rowData: string[] = [];
+      for (let col = 1; col <= Math.min(4, maxCol); col++) {
+        const cellId = `${String.fromCharCode(64 + col)}${row}`;
+        const cell = cells[cellId];
+        rowData.push(cell ? String(cell.value) : '');
+      }
+      rows.push(rowData);
+    }
+
+    return rows;
   };
 
   if (!isVisible) return null;
@@ -465,18 +496,26 @@ export const SheetCreator: React.FC<SheetCreatorProps> = ({ onCreateSheet, isVis
             <div className="bg-gray-50 rounded-lg p-4">
               <h4 className="text-sm font-medium text-gray-900 mb-2">Template Preview</h4>
               <p className="text-xs text-gray-600 mb-3">
-                This template includes pre-filled data and formulas to help you get started quickly.
+                This template includes pre-filled data to help you get started quickly.
               </p>
-              <div className="bg-white rounded border p-3 text-xs">
-                <div className="grid grid-cols-4 gap-2 text-gray-500">
-                  <div className="font-medium">Column A</div>
-                  <div className="font-medium">Column B</div>
-                  <div className="font-medium">Column C</div>
-                  <div className="font-medium">Column D</div>
-                </div>
-                <div className="mt-1 text-gray-400 text-xs">
-                  Sample data and formulas included...
-                </div>
+              <div className="bg-white rounded border p-3 overflow-x-auto">
+                {getPreviewData() && (
+                  <table className="min-w-full text-xs">
+                    <tbody>
+                      {getPreviewData()!.map((row, rowIndex) => (
+                        <tr key={rowIndex}>
+                          {row.map((cell, colIndex) => (
+                            <td key={colIndex} className="border border-gray-200 px-2 py-1 min-w-[80px]">
+                              <div className="truncate" title={cell}>
+                                {cell}
+                              </div>
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
           )}
