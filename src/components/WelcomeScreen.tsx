@@ -1,19 +1,20 @@
 import React from 'react';
-import { FileSpreadsheet, Upload, BarChart3, TrendingUp, Search, Zap, Database, Shield, Star, Users, CheckCircle, ArrowRight, Play, BookOpen, Target, Award } from 'lucide-react';
+import { FileSpreadsheet, Upload, BarChart3, TrendingUp, Search, Zap, Database, Shield, Star, Users, CheckCircle, ArrowRight, Play, BookOpen, Target, Award, Plus } from 'lucide-react';
 
 interface WelcomeScreenProps {
   onImportFile: () => void;
+  onCreateNewSheet: () => void;
   isLoading: boolean;
 }
 
-export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, isLoading }) => {
+export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCreateNewSheet, isLoading }) => {
   const features = [
     {
       icon: Search,
-      title: 'Natural Language Queries',
-      description: 'Ask questions like "extract west region data" or "show top 10 sales"',
+      title: 'Natural Language Commands',
+      description: 'Use simple English to manipulate data: "add data value 100 to cell A1", "apply formula", "format cells"',
       color: 'text-cyan-600 bg-cyan-100',
-      benefits: ['No complex formulas needed', 'Instant data insights', 'Plain English commands']
+      benefits: ['No complex formulas needed', 'Instant data manipulation', 'Plain English commands']
     },
     {
       icon: BarChart3,
@@ -31,8 +32,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, isLo
     },
     {
       icon: Database,
-      title: 'Excel Functions',
-      description: 'Full support for VLOOKUP, pivot tables, conditional formatting, and more',
+      title: 'Full Excel Functionality',
+      description: 'Complete Excel features with formulas, conditional formatting, pivot tables, and more',
       color: 'text-orange-600 bg-orange-100',
       benefits: ['200+ Excel functions', 'Advanced formulas', 'Data manipulation']
     }
@@ -52,7 +53,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, isLo
       name: "Sarah Johnson",
       role: "Data Analyst",
       company: "TechCorp",
-      comment: "Excel Pro AI has revolutionized how I work with spreadsheets. The natural language queries save me hours every day!",
+      comment: "Excel Pro AI has revolutionized how I work with spreadsheets. The natural language commands save me hours every day!",
       rating: 5,
       avatar: "👩‍💼"
     },
@@ -104,17 +105,17 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, isLo
   const steps = [
     {
       number: "1",
-      title: "Import Your Data",
-      description: "Upload Excel, CSV, PDF, Word documents, or other supported file formats",
-      details: "Drag and drop your files or click to browse. We support all major spreadsheet formats plus document conversion.",
+      title: "Create or Import Data",
+      description: "Start with a new sheet or upload Excel, CSV, PDF, Word documents, or other supported formats",
+      details: "Create from templates or drag and drop your files. We support all major spreadsheet formats plus document conversion.",
       icon: Upload,
       color: "from-cyan-500 to-blue-500"
     },
     {
       number: "2", 
-      title: "Ask Questions in Plain English",
-      description: "Use natural language to query your data instantly - no formulas required",
-      details: "Simply type what you want to know: 'Show me top sales by region' or 'Calculate average revenue'.",
+      title: "Use Natural Language Commands",
+      description: "Manipulate data with simple English commands - no complex formulas required",
+      details: "Type commands like 'add data value 100 to cell A1' or 'apply formula =SUM(A1:A10) to cell B1'.",
       icon: Search,
       color: "from-blue-500 to-purple-500"
     },
@@ -122,7 +123,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, isLo
       number: "3",
       title: "Get AI-Powered Insights",
       description: "Receive instant analytics, visualizations, and actionable insights",
-      details: "View charts, pivot tables, statistical analysis, and forecasts generated automatically from your queries.",
+      details: "View charts, pivot tables, statistical analysis, and forecasts generated automatically from your data.",
       icon: BarChart3,
       color: "from-purple-500 to-pink-500"
     }
@@ -173,46 +174,56 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, isLo
                 />
               </div>
               <h2 className="text-5xl font-bold text-white mb-6 leading-tight">
-                Transform Your Spreadsheets with
+                Create & Analyze Spreadsheets with
                 <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent"> AI Power</span>
               </h2>
               <p className="text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed">
-                Analyze Excel files with natural language queries, generate insights automatically, 
-                and create powerful visualizations - all while keeping your data 100% private and secure.
+                Create new Excel sheets, import existing files, and manipulate data using natural language commands. 
+                Apply formulas, conditional formatting, and advanced analytics - all while keeping your data 100% private and secure.
               </p>
             </div>
 
-            {/* Import Button */}
-            <div className="mb-12">
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+              <button
+                onClick={onCreateNewSheet}
+                disabled={isLoading}
+                className="group inline-flex items-center space-x-3 px-10 py-5 text-xl font-semibold text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-2xl hover:shadow-3xl transform hover:-translate-y-2"
+              >
+                <Plus className="h-7 w-7 group-hover:scale-110 transition-transform" />
+                <span>Create New Sheet</span>
+                <ArrowRight className="h-6 w-6 group-hover:translate-x-1 transition-transform" />
+              </button>
+
               <button
                 onClick={onImportFile}
                 disabled={isLoading}
                 className="group inline-flex items-center space-x-3 px-10 py-5 text-xl font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 rounded-2xl hover:from-cyan-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-2xl hover:shadow-3xl transform hover:-translate-y-2"
               >
                 <Upload className="h-7 w-7 group-hover:scale-110 transition-transform" />
-                <span>{isLoading ? 'Processing...' : 'Import Your Spreadsheet'}</span>
+                <span>{isLoading ? 'Processing...' : 'Import Existing File'}</span>
                 {isLoading && <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>}
                 {!isLoading && <ArrowRight className="h-6 w-6 group-hover:translate-x-1 transition-transform" />}
               </button>
-              
-              <div className="mt-6 text-sm text-slate-400">
-                <p className="mb-3 font-medium">Supported formats:</p>
-                <div className="flex flex-wrap justify-center gap-3">
-                  {supportedFormats.map((format, index) => (
-                    <span key={index} className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-xs border border-white/20 shadow-sm hover:shadow-md transition-shadow flex items-center space-x-2">
-                      <span className="text-lg">{format.icon}</span>
-                      <div>
-                        <strong className="text-white">{format.format}</strong> 
-                        <span className="text-slate-400 ml-1">{format.extensions}</span>
-                      </div>
-                    </span>
-                  ))}
-                </div>
+            </div>
+            
+            <div className="mt-6 text-sm text-slate-400">
+              <p className="mb-3 font-medium">Supported formats:</p>
+              <div className="flex flex-wrap justify-center gap-3">
+                {supportedFormats.map((format, index) => (
+                  <span key={index} className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-xs border border-white/20 shadow-sm hover:shadow-md transition-shadow flex items-center space-x-2">
+                    <span className="text-lg">{format.icon}</span>
+                    <div>
+                      <strong className="text-white">{format.format}</strong> 
+                      <span className="text-slate-400 ml-1">{format.extensions}</span>
+                    </div>
+                  </span>
+                ))}
               </div>
             </div>
 
             {/* Trust Indicators */}
-            <div className="flex flex-wrap justify-center items-center gap-8 mb-16">
+            <div className="flex flex-wrap justify-center items-center gap-8 mb-16 mt-8">
               <div className="flex items-center space-x-2 text-cyan-400">
                 <Shield className="h-5 w-5" />
                 <span className="font-medium">Privacy First</span>
@@ -237,7 +248,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, isLo
             <div className="text-center mb-12">
               <h3 className="text-4xl font-bold text-white mb-4">How It Works</h3>
               <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-                Get from data to insights in just three simple steps
+                Get from idea to insights in just three simple steps
               </p>
             </div>
             
@@ -361,33 +372,33 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, isLo
             </div>
           </div>
 
-          {/* Example Queries */}
+          {/* Example Commands */}
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-10 shadow-xl mb-16 border border-white/20">
             <div className="text-center mb-8">
               <Zap className="h-10 w-10 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-3xl font-bold text-white mb-4">Try These Natural Language Queries</h3>
-              <p className="text-slate-300 text-lg">Once you import your data, you can ask questions in plain English</p>
+              <h3 className="text-3xl font-bold text-white mb-4">Try These Natural Language Commands</h3>
+              <p className="text-slate-300 text-lg">Once you create or import data, you can use simple English commands</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[
-                'Extract west region data',
-                'Show top 10 sales records',
-                'Find products with highest revenue',
-                'Get sales data for 2024',
-                'Filter by product category',
-                'Compare north vs south region',
-                'Show total sales by region',
-                'Find records where sales > 1000',
-                'Analyze data for trends',
+                'Add data value 100 to cell A1',
+                'Apply formula =SUM(A1:A10) to cell B1',
+                'Format range A1:A10 if value > 100 with red background',
+                'Sort range A1:A10 ascending',
+                'Insert row at position 5',
+                'Merge cells A1:C1',
+                'Clear range B1:B10',
+                'Copy A1:A5 to B1',
                 'Create pivot table from data',
-                'Calculate correlation between columns',
-                'Generate forecast for next quarter'
-              ].map((query, index) => (
+                'Apply conditional formatting',
+                'Calculate average of column C',
+                'Open formula assistant'
+              ].map((command, index) => (
                 <div key={index} className="group bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-xl p-4 border border-cyan-400/30 hover:border-cyan-400/50 transition-all duration-200 hover:shadow-md cursor-pointer">
                   <div className="flex items-center space-x-2">
                     <Play className="h-4 w-4 text-cyan-400 group-hover:text-cyan-300" />
-                    <code className="text-cyan-300 text-sm font-medium group-hover:text-cyan-200 transition-colors">"{query}"</code>
+                    <code className="text-cyan-300 text-sm font-medium group-hover:text-cyan-200 transition-colors">"{command}"</code>
                   </div>
                 </div>
               ))}
@@ -448,15 +459,27 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, isLo
           {/* Final CTA */}
           <div className="text-center bg-gradient-to-r from-slate-800/50 to-blue-800/50 rounded-2xl p-10">
             <h3 className="text-2xl font-semibold text-white mb-8">Ready to Transform Your Data Analysis?</h3>
-            <button
-              onClick={onImportFile}
-              disabled={isLoading}
-              className="inline-flex items-center space-x-3 px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl hover:from-cyan-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-            >
-              <Upload className="h-6 w-6" />
-              <span>{isLoading ? 'Processing...' : 'Get Started Now - It\'s Free!'}</span>
-              {!isLoading && <ArrowRight className="h-5 w-5" />}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={onCreateNewSheet}
+                disabled={isLoading}
+                className="inline-flex items-center space-x-3 px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+              >
+                <Plus className="h-6 w-6" />
+                <span>Create New Sheet</span>
+                <ArrowRight className="h-5 w-5" />
+              </button>
+              
+              <button
+                onClick={onImportFile}
+                disabled={isLoading}
+                className="inline-flex items-center space-x-3 px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl hover:from-cyan-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+              >
+                <Upload className="h-6 w-6" />
+                <span>{isLoading ? 'Processing...' : 'Import File'}</span>
+                {!isLoading && <ArrowRight className="h-5 w-5" />}
+              </button>
+            </div>
             <p className="text-sm text-slate-400 mt-4">
               5-day free trial • No credit card required • Cancel anytime
             </p>

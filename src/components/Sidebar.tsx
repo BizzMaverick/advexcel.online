@@ -6,7 +6,8 @@ import {
   ChevronRight,
   Activity,
   Download,
-  Upload
+  Upload,
+  Plus
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -14,6 +15,7 @@ interface SidebarProps {
   onPivotTableClick: () => void;
   onExportClick: () => void;
   onImportClick: () => void;
+  onCreateSheetClick: () => void;
   isDataLoaded: boolean;
 }
 
@@ -22,11 +24,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onPivotTableClick,
   onExportClick,
   onImportClick,
+  onCreateSheetClick,
   isDataLoaded
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const menuItems = [
+    {
+      id: 'create',
+      label: 'Create New Sheet',
+      icon: Plus,
+      onClick: onCreateSheetClick,
+      color: 'text-green-600 bg-green-100',
+      description: 'Create a new Excel sheet with templates',
+      enabled: true
+    },
     {
       id: 'import',
       label: 'Import Data',

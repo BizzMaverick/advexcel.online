@@ -20,12 +20,14 @@ import { ReferralPanel } from './components/ReferralPanel';
 import { Footer } from './components/Footer';
 import { LegalModals } from './components/LegalModals';
 import { FormulaAssistant } from './components/FormulaAssistant';
+import { SheetCreator } from './components/SheetCreator';
 import { SpreadsheetData, Cell } from './types/spreadsheet';
 import { User } from './types/auth';
 import { SuggestionFeedback } from './types/chat';
 import { WorkbookData } from './types/workbook';
 import { TrialInfo } from './types/subscription';
 import { CommandProcessor } from './utils/commandProcessor';
+import { ExcelCommandProcessor } from './utils/excelCommandProcessor';
 import { ExcelFileHandler } from './utils/excelFileHandler';
 import { NaturalLanguageProcessor, QueryResult } from './utils/naturalLanguageProcessor';
 import { DocumentConverter } from './utils/documentConverter';
@@ -51,6 +53,9 @@ function App() {
   
   // Formula Assistant state
   const [showFormulaAssistant, setShowFormulaAssistant] = useState(false);
+  
+  // Sheet Creator state
+  const [showSheetCreator, setShowSheetCreator] = useState(false);
   
   // Application state
   const [workbook, setWorkbook] = useState<WorkbookData | null>(null);
@@ -279,6 +284,46 @@ function App() {
     if (!checkFeatureAccess()) return;
     
     try {
+      // Check if command is for formula assistant
+      const formulaCommands = ['formula assistant', 'formula helper', 'excel function help', 'open formula assistant', 'show formula helper'];
+      if (formulaCommands.some(cmd => command.toLowerCase().includes(cmd))) {
+        setShowFormulaAssistant(true);
+        addNotification('Formula Assistant opened', 'success');
+        return;
+      }
+
+      // Check if command is for creating new sheet
+      const sheetCommands = ['create sheet', 'new sheet', 'add sheet', 'create new sheet'];
+      if (sheetCommands.some(cmd => command.toLowerCase().includes(cmd))) {
+        setShowSheetCreator(true);
+        addNotification('Sheet Creator opened', 'success');
+        return;
+      }
+
+      // Process Excel commands first
+      const excelProcessor = new ExcelCommandProcessor(spreadsheetData.cells);
+      const excelResult = excelProcessor.processCommand(command);
+      
+      if (excelResult.success) {
+        // Apply cell updates
+        if (excelResult.cellUpdates) {
+          setSpreadsheetData(prev => ({
+            ...prev,
+            cells: { ...prev.cells, ...excelResult.cellUpdates }
+          }));
+        }
+
+        // Apply formatting
+        if (excelResult.formatting) {
+          excelResult.formatting.forEach(({ cellId, format }) => {
+            handleCellFormat(cellId, format);
+          });
+        }
+
+        addNotification(excelResult.message, 'success');
+        return;
+      }
+
       // Process multi-sheet queries if workbook exists
       let targetCells = spreadsheetData.cells;
       let processedCommand = command;
@@ -364,7 +409,7 @@ function App() {
       console.error('Error executing command:', error);
       addNotification('Error executing command. Please try again.', 'error');
     }
-  }, [spreadsheetData, workbook, user]);
+  }, [spreadsheetData, workbook, user, handleCellFormat]);
 
   const calculateSelectionStats = () => {
     if (!spreadsheetData.selectedCell) return undefined;
@@ -495,6 +540,35 @@ function App() {
       }
     };
     input.click();
+  };
+
+  const handleCreateNewSheet = (name: string, initialData?: { [key: string]: Cell }) => {
+    if (!checkFeatureAccess()) return;
+
+    const newWorkbook: WorkbookData = {
+      id: Date.now().toString(),
+      name: name,
+      worksheets: [{
+        name: name,
+        cells: initialData || {},
+        isActive: true,
+        rowCount: initialData ? Math.max(...Object.values(initialData).map(cell => cell.row)) : 0,
+        columnCount: initialData ? Math.max(...Object.values(initialData).map(cell => cell.col)) : 0
+      }],
+      activeWorksheet: name,
+      createdAt: new Date(),
+      lastModified: new Date()
+    };
+
+    setWorkbook(newWorkbook);
+    setSpreadsheetData(prev => ({
+      ...prev,
+      cells: initialData || {},
+    }));
+    setIsDataLoaded(true);
+    setShowWelcomeScreen(false);
+    
+    addNotification(`New sheet "${name}" created successfully!`, 'success');
   };
 
   const handleWorksheetChange = (worksheetName: string) => {
@@ -755,6 +829,14 @@ function App() {
     'Open formula assistant',
     'Show formula helper',
     'Excel function help',
+    'Create new sheet',
+    'Add data to cell A1 value 100',
+    'Apply formula =SUM(A1:A10) to cell B1',
+    'Format range A1:A10 if value > 100 with red background',
+    'Sort range A1:A10 ascending',
+    'Insert row at position 5',
+    'Merge cells A1:C1',
+    'Clear range B1:B10',
   ];
 
   // Show authentication modal if not logged in
@@ -795,10 +877,21 @@ function App() {
   if (showWelcomeScreen && !isDataLoaded) {
     return (
       <div className="min-h-screen flex flex-col">
-        <WelcomeScreen onImportFile={handleImportFile} isLoading={isLoading} />
+        <WelcomeScreen 
+          onImportFile={handleImportFile} 
+          onCreateNewSheet={() => setShowSheetCreator(true)}
+          isLoading={isLoading} 
+        />
         <Footer 
           onReferralClick={() => setShowReferralPanel(true)}
           onRatingClick={() => setShowRatingModal(true)}
+        />
+        
+        {/* Sheet Creator */}
+        <SheetCreator
+          isVisible={showSheetCreator}
+          onClose={() => setShowSheetCreator(false)}
+          onCreateSheet={handleCreateNewSheet}
         />
         
         {/* Referral Panel */}
@@ -870,6 +963,7 @@ function App() {
           if (checkFeatureAccess()) setShowExportModal(true);
         }}
         onImportClick={handleImportFile}
+        onCreateSheetClick={() => setShowSheetCreator(true)}
         isDataLoaded={isDataLoaded}
       />
 
@@ -953,10 +1047,10 @@ function App() {
           <div className="mb-2">
             <div className="flex items-center space-x-2 text-sm text-slate-600">
               <Search className="h-4 w-4" />
-              <span className="font-medium">Try natural language queries and Excel functions:</span>
-              <span className="text-cyan-600">"perform vlookup"</span>
+              <span className="font-medium">Try natural language commands:</span>
+              <span className="text-cyan-600">"add data value 100 to cell A1"</span>
               <span className="text-slate-400">•</span>
-              <span className="text-cyan-600">"calculate sum of range A1:A10"</span>
+              <span className="text-cyan-600">"apply formula =SUM(A1:A10) to cell B1"</span>
               <span className="text-slate-400">•</span>
               <span className="text-cyan-600">"open formula assistant"</span>
               {workbook && workbook.worksheets.length > 1 && (
@@ -968,16 +1062,7 @@ function App() {
             </div>
           </div>
           <CommandBar 
-            onExecuteCommand={(command) => {
-              // Check if command is for formula assistant
-              const formulaCommands = ['formula assistant', 'formula helper', 'excel function help', 'open formula assistant', 'show formula helper'];
-              if (formulaCommands.some(cmd => command.toLowerCase().includes(cmd))) {
-                setShowFormulaAssistant(true);
-                addNotification('Formula Assistant opened', 'success');
-                return;
-              }
-              handleExecuteCommand(command);
-            }} 
+            onExecuteCommand={handleExecuteCommand} 
             suggestions={enhancedSuggestions}
           />
         </div>
@@ -1059,6 +1144,13 @@ function App() {
         onCellFormat={handleCellFormat}
         isVisible={showFormulaAssistant}
         onClose={() => setShowFormulaAssistant(false)}
+      />
+
+      {/* Sheet Creator */}
+      <SheetCreator
+        isVisible={showSheetCreator}
+        onClose={() => setShowSheetCreator(false)}
+        onCreateSheet={handleCreateNewSheet}
       />
 
       {/* Subscription Modal */}
