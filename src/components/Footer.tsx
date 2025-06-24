@@ -25,150 +25,121 @@ export const Footer: React.FC<FooterProps> = ({ onReferralClick, onRatingClick }
 
   return (
     <footer className="bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 text-white">
-      {/* Main Footer Content */}
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {/* Company Info */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <img 
-                src="/Tech Company Logo Excel Pro AI, Blue and Silver.png" 
-                alt="Excel Pro AI" 
-                className="h-8 w-8"
-              />
-              <div>
-                <h3 className="text-xl font-bold">Excel Pro AI</h3>
-                <p className="text-sm text-slate-300">Advanced Analytics Suite</p>
+      {/* Single Line Footer */}
+      <div className="border-t border-slate-700/50 bg-slate-900/50">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex flex-col lg:flex-row items-center justify-between space-y-4 lg:space-y-0">
+            {/* Left Section - Company Info */}
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-3">
+                <img 
+                  src="/Tech Company Logo Excel Pro AI, Blue and Silver.png" 
+                  alt="Excel Pro AI" 
+                  className="h-6 w-6"
+                />
+                <div>
+                  <span className="text-sm font-bold">Excel Pro AI</span>
+                  <span className="text-xs text-slate-400 ml-2">© {currentYear}</span>
+                </div>
+              </div>
+              
+              <div className="hidden md:flex items-center space-x-2 text-xs text-cyan-400">
+                <Shield className="h-3 w-3" />
+                <span>100% Privacy Protected</span>
               </div>
             </div>
-            <p className="text-slate-300 text-sm leading-relaxed">
-              Transform your spreadsheets with AI-powered insights, natural language queries, and advanced analytics. 
-              Your data stays private and secure.
-            </p>
-            <div className="flex items-center space-x-2 text-sm text-cyan-400">
-              <Shield className="h-4 w-4" />
-              <span>100% Privacy Protected</span>
-            </div>
-          </div>
 
-          {/* Quick Links */}
-          <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-white">Quick Links</h4>
-            <ul className="space-y-2">
-              {quickLinks.map((link) => (
-                <li key={link.name}>
+            {/* Center Section - Links */}
+            <div className="flex items-center space-x-6 text-xs">
+              {/* Quick Links */}
+              <div className="hidden lg:flex items-center space-x-4">
+                {quickLinks.map((link) => (
                   <a 
+                    key={link.name}
                     href={link.href} 
-                    className="text-slate-300 hover:text-cyan-400 transition-colors text-sm"
+                    className="text-slate-300 hover:text-cyan-400 transition-colors"
                   >
                     {link.name}
                   </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* User Actions */}
-          <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-white">Community</h4>
-            <div className="space-y-3">
-              {onReferralClick && (
-                <button
-                  onClick={onReferralClick}
-                  className="flex items-center space-x-2 text-slate-300 hover:text-cyan-400 transition-colors text-sm"
-                >
-                  <Gift className="h-4 w-4" />
-                  <span>Refer & Earn</span>
-                </button>
-              )}
-              {onRatingClick && (
-                <button
-                  onClick={onRatingClick}
-                  className="flex items-center space-x-2 text-slate-300 hover:text-cyan-400 transition-colors text-sm"
-                >
-                  <Star className="h-4 w-4" />
-                  <span>Rate Our App</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Contact & Legal */}
-          <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-white">Contact & Support</h4>
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2 text-sm text-slate-300">
-                <Mail className="h-4 w-4 text-cyan-400" />
-                <a 
-                  href="mailto:contact@advexcel.online" 
-                  className="hover:text-cyan-400 transition-colors"
-                >
-                  contact@advexcel.online
-                </a>
-              </div>
-              <div className="flex items-center space-x-2 text-sm text-slate-300">
-                <Phone className="h-4 w-4 text-cyan-400" />
-                <span>+91 9848220007</span>
-              </div>
-            </div>
-            
-            <div className="pt-2">
-              <h5 className="text-sm font-medium text-white mb-2">Legal</h5>
-              <ul className="space-y-1">
-                {legalLinks.map((link) => (
-                  <li key={link.name}>
-                    <a 
-                      href={link.href} 
-                      className="text-slate-300 hover:text-cyan-400 transition-colors text-sm flex items-center space-x-2"
-                    >
-                      {link.name === 'Terms of Service' && <FileText className="h-3 w-3" />}
-                      {link.name === 'Privacy Policy' && <Shield className="h-3 w-3" />}
-                      {link.name === 'Cookie Policy' && <Cookie className="h-3 w-3" />}
-                      {link.name === 'Refund Policy' && <Heart className="h-3 w-3" />}
-                      <span>{link.name}</span>
-                    </a>
-                  </li>
                 ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
+              </div>
 
-      {/* Bottom Bar */}
-      <div className="border-t border-slate-700/50 bg-slate-900/50">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            {/* Copyright */}
-            <div className="text-center md:text-left">
-              <p className="text-sm text-slate-400">
-                © {currentYear} Excel Pro AI. All rights reserved.
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                Made with <Heart className="h-3 w-3 inline text-red-400" /> for data analysts worldwide
-              </p>
+              {/* Legal Links */}
+              <div className="flex items-center space-x-4">
+                {legalLinks.map((link) => (
+                  <a 
+                    key={link.name}
+                    href={link.href} 
+                    className="text-slate-400 hover:text-cyan-400 transition-colors"
+                  >
+                    {link.name}
+                  </a>
+                ))}
+              </div>
+
+              {/* Community Actions */}
+              <div className="flex items-center space-x-4">
+                {onReferralClick && (
+                  <button
+                    onClick={onReferralClick}
+                    className="flex items-center space-x-1 text-slate-300 hover:text-cyan-400 transition-colors"
+                  >
+                    <Gift className="h-3 w-3" />
+                    <span>Refer & Earn</span>
+                  </button>
+                )}
+                {onRatingClick && (
+                  <button
+                    onClick={onRatingClick}
+                    className="flex items-center space-x-1 text-slate-300 hover:text-cyan-400 transition-colors"
+                  >
+                    <Star className="h-3 w-3" />
+                    <span>Rate App</span>
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* Contact Info */}
-            <div className="flex items-center space-x-4 text-xs text-slate-500">
-              <div className="flex items-center space-x-2">
-                <Mail className="h-3 w-3" />
+            {/* Right Section - Contact */}
+            <div className="flex items-center space-x-6 text-xs">
+              <div className="flex items-center space-x-4">
                 <a 
                   href="mailto:contact@advexcel.online" 
-                  className="hover:text-cyan-400 transition-colors"
+                  className="flex items-center space-x-1 text-slate-300 hover:text-cyan-400 transition-colors"
                 >
-                  Questions? Contact us
+                  <Mail className="h-3 w-3" />
+                  <span className="hidden sm:inline">contact@advexcel.online</span>
                 </a>
+                <div className="flex items-center space-x-1 text-slate-400">
+                  <Phone className="h-3 w-3" />
+                  <span className="hidden sm:inline">+91 9848220007</span>
+                </div>
               </div>
-              <button className="text-cyan-400 hover:text-cyan-300 transition-colors">
-                Cookie Settings
-              </button>
+              
+              <div className="flex items-center space-x-1 text-slate-500">
+                <Heart className="h-3 w-3 text-red-400" />
+                <span className="hidden md:inline">Made for data analysts</span>
+              </div>
             </div>
           </div>
 
-          {/* Additional Legal Text */}
-          <div className="mt-4 pt-4 border-t border-slate-800/50">
-            <p className="text-xs text-slate-500 text-center leading-relaxed">
+          {/* Mobile Responsive Additional Info */}
+          <div className="lg:hidden mt-3 pt-3 border-t border-slate-800/50">
+            <div className="flex flex-col sm:flex-row items-center justify-between space-y-2 sm:space-y-0 text-xs text-slate-500">
+              <div className="flex items-center space-x-4">
+                <span>Excel Pro AI is independent software, not affiliated with Microsoft Corporation</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button className="text-cyan-400 hover:text-cyan-300 transition-colors">
+                  Cookie Settings
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Additional Legal Text */}
+          <div className="hidden lg:block mt-2 pt-2 border-t border-slate-800/50">
+            <p className="text-xs text-slate-500 text-center">
               Excel Pro AI is an independent software application and is not affiliated with, endorsed by, or sponsored by Microsoft Corporation. 
               Excel is a trademark of Microsoft Corporation. All product names, logos, and brands are property of their respective owners.
             </p>
