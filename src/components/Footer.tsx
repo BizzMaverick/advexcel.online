@@ -1,7 +1,12 @@
 import React from 'react';
-import { FileSpreadsheet, Mail, Phone, Shield, Cookie, FileText, Heart } from 'lucide-react';
+import { FileSpreadsheet, Mail, Phone, Shield, Cookie, FileText, Heart, Gift, Star } from 'lucide-react';
 
-export const Footer: React.FC = () => {
+interface FooterProps {
+  onReferralClick?: () => void;
+  onRatingClick?: () => void;
+}
+
+export const Footer: React.FC<FooterProps> = ({ onReferralClick, onRatingClick }) => {
   const currentYear = new Date().getFullYear();
 
   const quickLinks = [
@@ -22,7 +27,7 @@ export const Footer: React.FC = () => {
     <footer className="bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 text-white">
       {/* Main Footer Content */}
       <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Company Info */}
           <div className="space-y-4">
             <div className="flex items-center space-x-3">
@@ -61,6 +66,31 @@ export const Footer: React.FC = () => {
                 </li>
               ))}
             </ul>
+          </div>
+
+          {/* User Actions */}
+          <div className="space-y-4">
+            <h4 className="text-lg font-semibold text-white">Community</h4>
+            <div className="space-y-3">
+              {onReferralClick && (
+                <button
+                  onClick={onReferralClick}
+                  className="flex items-center space-x-2 text-slate-300 hover:text-cyan-400 transition-colors text-sm"
+                >
+                  <Gift className="h-4 w-4" />
+                  <span>Refer & Earn</span>
+                </button>
+              )}
+              {onRatingClick && (
+                <button
+                  onClick={onRatingClick}
+                  className="flex items-center space-x-2 text-slate-300 hover:text-cyan-400 transition-colors text-sm"
+                >
+                  <Star className="h-4 w-4" />
+                  <span>Rate Our App</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Contact & Legal */}

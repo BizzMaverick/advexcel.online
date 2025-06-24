@@ -87,7 +87,7 @@ function App() {
         // Create demo user for production
         const demoUser: User = {
           id: 'demo_user_' + Date.now(),
-          email: 'demo@advexcel.online',
+          email: 'user@advexcel.online',
           isVerified: true,
           createdAt: new Date(),
           lastLogin: new Date()
@@ -130,7 +130,7 @@ function App() {
       // Fallback to demo user
       const demoUser: User = {
         id: 'demo_user_fallback',
-        email: 'demo@advexcel.online',
+        email: 'user@advexcel.online',
         isVerified: true,
         createdAt: new Date(),
         lastLogin: new Date()
@@ -752,6 +752,9 @@ function App() {
     'Create pivot table from A1:D10',
     'Filter data where column A contains "Sales"',
     'Format range as currency',
+    'Open formula assistant',
+    'Show formula helper',
+    'Excel function help',
   ];
 
   // Show authentication modal if not logged in
@@ -793,7 +796,24 @@ function App() {
     return (
       <div className="min-h-screen flex flex-col">
         <WelcomeScreen onImportFile={handleImportFile} isLoading={isLoading} />
-        <Footer />
+        <Footer 
+          onReferralClick={() => setShowReferralPanel(true)}
+          onRatingClick={() => setShowRatingModal(true)}
+        />
+        
+        {/* Referral Panel */}
+        <ReferralPanel
+          isVisible={showReferralPanel}
+          onClose={() => setShowReferralPanel(false)}
+          userId={user.id}
+        />
+
+        {/* Rating Modal */}
+        <RatingModal
+          isVisible={showRatingModal}
+          onClose={() => setShowRatingModal(false)}
+          onSubmitRating={handleRatingSubmit}
+        />
       </div>
     );
   }
@@ -881,38 +901,6 @@ function App() {
             
             {/* User Menu */}
             <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setShowFormulaAssistant(true)}
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-lg hover:bg-cyan-100 transition-colors"
-              >
-                <Calculator className="h-4 w-4" />
-                <span>Formula Assistant</span>
-              </button>
-
-              <button
-                onClick={() => setShowReferralPanel(true)}
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors"
-              >
-                <Gift className="h-4 w-4" />
-                <span>Refer & Earn</span>
-              </button>
-
-              <button
-                onClick={() => setShowChatBot(true)}
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
-              >
-                <MessageCircle className="h-4 w-4" />
-                <span>Help</span>
-              </button>
-              
-              <button
-                onClick={() => setShowRatingModal(true)}
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
-              >
-                <Star className="h-4 w-4" />
-                <span>Rate</span>
-              </button>
-
               {!isSubscribed && (
                 <button
                   onClick={() => setShowSubscriptionModal(true)}
@@ -970,7 +958,7 @@ function App() {
               <span className="text-slate-400">•</span>
               <span className="text-cyan-600">"calculate sum of range A1:A10"</span>
               <span className="text-slate-400">•</span>
-              <span className="text-cyan-600">"apply if formula"</span>
+              <span className="text-cyan-600">"open formula assistant"</span>
               {workbook && workbook.worksheets.length > 1 && (
                 <>
                   <span className="text-slate-400">•</span>
@@ -980,7 +968,16 @@ function App() {
             </div>
           </div>
           <CommandBar 
-            onExecuteCommand={handleExecuteCommand} 
+            onExecuteCommand={(command) => {
+              // Check if command is for formula assistant
+              const formulaCommands = ['formula assistant', 'formula helper', 'excel function help', 'open formula assistant', 'show formula helper'];
+              if (formulaCommands.some(cmd => command.toLowerCase().includes(cmd))) {
+                setShowFormulaAssistant(true);
+                addNotification('Formula Assistant opened', 'success');
+                return;
+              }
+              handleExecuteCommand(command);
+            }} 
             suggestions={enhancedSuggestions}
           />
         </div>
@@ -1007,7 +1004,21 @@ function App() {
         </div>
 
         {/* Footer */}
-        <Footer />
+        <Footer 
+          onReferralClick={() => setShowReferralPanel(true)}
+          onRatingClick={() => setShowRatingModal(true)}
+        />
+      </div>
+
+      {/* Dynamic Chat Button */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <button
+          onClick={() => setShowChatBot(true)}
+          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110"
+          title="Need help? Chat with us!"
+        >
+          <MessageCircle className="h-6 w-6" />
+        </button>
       </div>
 
       {/* Analytics Panel */}
