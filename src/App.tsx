@@ -21,6 +21,7 @@ import { Footer } from './components/Footer';
 import { LegalModals } from './components/LegalModals';
 import { FormulaAssistant } from './components/FormulaAssistant';
 import { SheetCreator } from './components/SheetCreator';
+import { LoadingProgress } from './components/LoadingProgress';
 import { SpreadsheetData, Cell } from './types/spreadsheet';
 import { User } from './types/auth';
 import { SuggestionFeedback } from './types/chat';
@@ -29,6 +30,8 @@ import { TrialInfo } from './types/subscription';
 import { CommandProcessor } from './utils/commandProcessor';
 import { ExcelCommandProcessor } from './utils/excelCommandProcessor';
 import { ExcelFileHandler } from './utils/excelFileHandler';
+import { LargeFileHandler } from './utils/largeFileHandler';
+import { PerformanceOptimizer } from './utils/performanceOptimizer';
 import { NaturalLanguageProcessor, QueryResult } from './utils/naturalLanguageProcessor';
 import { DocumentConverter } from './utils/documentConverter';
 import { MultiSheetHandler } from './utils/multiSheetHandler';
@@ -56,6 +59,12 @@ function App() {
   
   // Sheet Creator state
   const [showSheetCreator, setShowSheetCreator] = useState(false);
+  
+  // Loading state
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingMessage, setLoadingMessage] = useState('');
+  const [loadingFileName, setLoadingFileName] = useState('');
+  const [showLoadingProgress, setShowLoadingProgress] = useState(false);
   
   // Application state
   const [workbook, setWorkbook] = useState<WorkbookData | null>(null);
@@ -424,124 +433,6 @@ function App() {
     };
   };
 
-  const handleImportFile = () => {
-    if (!checkFeatureAccess()) return;
-    
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.csv,.xlsx,.xls,.xlsm,.xlsb,.ods,.pdf,.doc,.docx,.txt';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-
-      setIsLoading(true);
-      
-      try {
-        let newWorkbook: WorkbookData | null = null;
-        let newCells: { [key: string]: Cell } = {};
-        
-        if (DocumentConverter.isDocumentFile(file.name)) {
-          // Handle document conversion
-          let conversion;
-          const extension = file.name.toLowerCase().split('.').pop();
-          
-          if (extension === 'pdf') {
-            conversion = await DocumentConverter.convertPdfToExcel(file);
-          } else if (extension === 'txt') {
-            conversion = await DocumentConverter.convertTextToExcel(file);
-          } else {
-            conversion = await DocumentConverter.convertWordToExcel(file);
-          }
-          
-          if (conversion.success) {
-            newWorkbook = conversion.convertedData;
-            newCells = newWorkbook.worksheets[0].cells;
-            addNotification(`Document converted successfully: ${conversion.conversionLog.length} steps completed`, 'success');
-          } else {
-            throw new Error('Document conversion failed');
-          }
-        } else if (ExcelFileHandler.isExcelFile(file.name)) {
-          // Handle multi-sheet Excel files
-          newWorkbook = await MultiSheetHandler.readMultiSheetExcel(file);
-          const activeSheet = newWorkbook.worksheets.find(ws => ws.isActive);
-          newCells = activeSheet?.cells || {};
-          addNotification(`Excel workbook imported: ${newWorkbook.worksheets.length} sheets loaded`, 'success');
-        } else if (ExcelFileHandler.isCSVFile(file.name)) {
-          // Handle CSV files
-          await new Promise<void>((resolve, reject) => {
-            Papa.parse(file, {
-              complete: (results) => {
-                try {
-                  const rows = results.data as string[][];
-                  
-                  rows.forEach((row, rowIndex) => {
-                    row.forEach((cellValue, colIndex) => {
-                      if (cellValue && cellValue.trim()) {
-                        const cellId = `${String.fromCharCode(65 + colIndex)}${rowIndex + 1}`;
-                        const numValue = Number(cellValue.trim());
-                        newCells[cellId] = {
-                          id: cellId,
-                          row: rowIndex + 1,
-                          col: colIndex + 1,
-                          value: isNaN(numValue) ? cellValue.trim() : numValue,
-                          type: isNaN(numValue) ? 'text' : 'number',
-                        };
-                      }
-                    });
-                  });
-                  
-                  // Create a simple workbook for CSV
-                  newWorkbook = {
-                    id: Date.now().toString(),
-                    name: file.name.replace(/\.[^/.]+$/, ''),
-                    worksheets: [{
-                      name: 'Sheet1',
-                      cells: newCells,
-                      isActive: true,
-                      rowCount: rows.length,
-                      columnCount: rows[0]?.length || 0
-                    }],
-                    activeWorksheet: 'Sheet1',
-                    createdAt: new Date(),
-                    lastModified: new Date()
-                  };
-                  
-                  addNotification(`CSV imported successfully: ${rows.length} rows, ${rows[0]?.length || 0} columns`, 'success');
-                  resolve();
-                } catch (error) {
-                  reject(error);
-                }
-              },
-              header: false,
-              skipEmptyLines: true,
-              error: (error) => reject(error)
-            });
-          });
-        } else {
-          throw new Error('Unsupported file format');
-        }
-
-        setWorkbook(newWorkbook);
-        setSpreadsheetData(prev => ({
-          ...prev,
-          cells: newCells,
-        }));
-        setIsDataLoaded(true);
-        setShowWelcomeScreen(false);
-        
-      } catch (error) {
-        console.error('Import error:', error);
-        addNotification(
-          `Failed to import file: ${error instanceof Error ? error.message : 'Unknown error'}`, 
-          'error'
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    input.click();
-  };
-
   const handleCreateNewSheet = (name: string, initialData?: { [key: string]: Cell }) => {
     if (!checkFeatureAccess()) return;
 
@@ -569,6 +460,140 @@ function App() {
     setShowWelcomeScreen(false);
     
     addNotification(`New sheet "${name}" created successfully!`, 'success');
+  };
+
+  const handleImportFile = async () => {
+    if (!checkFeatureAccess()) return;
+    
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv,.xlsx,.xls,.xlsm,.xlsb,.ods,.pdf,.doc,.docx,.txt';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      // Check if file can be processed
+      const canProcess = LargeFileHandler.canProcessFile(file);
+      if (!canProcess.canProcess) {
+        addNotification(canProcess.reason || 'Cannot process this file', 'error');
+        return;
+      }
+
+      setIsLoading(true);
+      setShowLoadingProgress(true);
+      setLoadingFileName(file.name);
+      setLoadingProgress(0);
+      setLoadingMessage('Initializing...');
+      
+      try {
+        let newWorkbook: WorkbookData | null = null;
+        let newCells: { [key: string]: Cell } = {};
+        
+        if (DocumentConverter.isDocumentFile(file.name)) {
+          // Handle document conversion
+          setLoadingMessage('Converting document...');
+          let conversion;
+          const extension = file.name.toLowerCase().split('.').pop();
+          
+          if (extension === 'pdf') {
+            conversion = await DocumentConverter.convertPdfToExcel(file);
+          } else if (extension === 'txt') {
+            conversion = await DocumentConverter.convertTextToExcel(file);
+          } else {
+            conversion = await DocumentConverter.convertWordToExcel(file);
+          }
+          
+          if (conversion.success) {
+            newWorkbook = conversion.convertedData;
+            newCells = newWorkbook.worksheets[0].cells;
+            setLoadingProgress(100);
+            addNotification(`Document converted successfully: ${conversion.conversionLog.length} steps completed`, 'success');
+          } else {
+            throw new Error('Document conversion failed');
+          }
+        } else if (ExcelFileHandler.isExcelFile(file.name)) {
+          // Handle multi-sheet Excel files with progress tracking
+          setLoadingMessage('Reading Excel file...');
+          newWorkbook = await LargeFileHandler.readLargeExcelFile(file, (progress) => {
+            setLoadingProgress(progress);
+            if (progress < 50) {
+              setLoadingMessage('Reading file structure...');
+            } else if (progress < 90) {
+              setLoadingMessage('Processing worksheets...');
+            } else {
+              setLoadingMessage('Finalizing...');
+            }
+          });
+          
+          const activeSheet = newWorkbook.worksheets.find(ws => ws.isActive);
+          newCells = activeSheet?.cells || {};
+          addNotification(`Excel workbook imported: ${newWorkbook.worksheets.length} sheets loaded`, 'success');
+        } else if (ExcelFileHandler.isCSVFile(file.name)) {
+          // Handle CSV files with progress tracking
+          setLoadingMessage('Reading CSV file...');
+          newCells = await LargeFileHandler.readLargeCSVFile(file, (progress) => {
+            setLoadingProgress(progress);
+            if (progress < 30) {
+              setLoadingMessage('Parsing CSV data...');
+            } else if (progress < 80) {
+              setLoadingMessage('Processing rows...');
+            } else {
+              setLoadingMessage('Finalizing...');
+            }
+          });
+          
+          // Create a simple workbook for CSV
+          const cellEntries = Object.entries(newCells);
+          const maxRow = cellEntries.length > 0 ? Math.max(...cellEntries.map(([_, cell]) => cell.row)) : 0;
+          const maxCol = cellEntries.length > 0 ? Math.max(...cellEntries.map(([_, cell]) => cell.col)) : 0;
+          
+          newWorkbook = {
+            id: Date.now().toString(),
+            name: file.name.replace(/\.[^/.]+$/, ''),
+            worksheets: [{
+              name: 'Sheet1',
+              cells: newCells,
+              isActive: true,
+              rowCount: maxRow,
+              columnCount: maxCol
+            }],
+            activeWorksheet: 'Sheet1',
+            createdAt: new Date(),
+            lastModified: new Date()
+          };
+          
+          addNotification(`CSV imported successfully: ${maxRow} rows, ${maxCol} columns`, 'success');
+        } else {
+          throw new Error('Unsupported file format');
+        }
+
+        setWorkbook(newWorkbook);
+        setSpreadsheetData(prev => ({
+          ...prev,
+          cells: newCells,
+        }));
+        setIsDataLoaded(true);
+        setShowWelcomeScreen(false);
+        
+        // Small delay to show 100% progress
+        setTimeout(() => {
+          setShowLoadingProgress(false);
+          setLoadingProgress(0);
+        }, 1000);
+        
+      } catch (error) {
+        console.error('Import error:', error);
+        setShowLoadingProgress(false);
+        setLoadingProgress(0);
+        addNotification(
+          `Failed to import file: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+          'error'
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    input.click();
   };
 
   const handleWorksheetChange = (worksheetName: string) => {
@@ -907,6 +932,19 @@ function App() {
           onClose={() => setShowRatingModal(false)}
           onSubmitRating={handleRatingSubmit}
         />
+
+        {/* Loading Progress */}
+        <LoadingProgress
+          isVisible={showLoadingProgress}
+          progress={loadingProgress}
+          message={loadingMessage}
+          fileName={loadingFileName}
+          onCancel={() => {
+            setShowLoadingProgress(false);
+            setIsLoading(false);
+            setLoadingProgress(0);
+          }}
+        />
       </div>
     );
   }
@@ -1191,15 +1229,18 @@ function App() {
         }}
       />
 
-      {/* Loading Overlay */}
-      {isLoading && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 flex items-center space-x-3">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-600"></div>
-            <span className="text-slate-700">Processing file...</span>
-          </div>
-        </div>
-      )}
+      {/* Loading Progress */}
+      <LoadingProgress
+        isVisible={showLoadingProgress}
+        progress={loadingProgress}
+        message={loadingMessage}
+        fileName={loadingFileName}
+        onCancel={() => {
+          setShowLoadingProgress(false);
+          setIsLoading(false);
+          setLoadingProgress(0);
+        }}
+      />
 
       {/* Notifications */}
       <div className={`fixed top-4 right-4 space-y-2 z-50 ${showPrivacyBanner ? 'mb-16' : ''}`}>
