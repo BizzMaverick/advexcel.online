@@ -48,33 +48,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
     { format: 'Text', extensions: '.txt', icon: '📃' }
   ];
 
-  const testimonials = [
-    {
-      name: "Sarah Johnson",
-      role: "Data Analyst",
-      company: "TechCorp",
-      comment: "Excel Pro AI has revolutionized how I work with spreadsheets. The natural language commands save me hours every day!",
-      rating: 5,
-      avatar: "👩‍💼"
-    },
-    {
-      name: "Michael Chen",
-      role: "Business Manager",
-      company: "StartupXYZ",
-      comment: "The AI-powered insights help me make better decisions faster. The privacy-first approach gives me peace of mind.",
-      rating: 5,
-      avatar: "👨‍💼"
-    },
-    {
-      name: "Emily Rodriguez",
-      role: "Financial Analyst",
-      company: "FinanceFlow",
-      comment: "Privacy-first approach and powerful analytics make this the perfect tool for sensitive financial data analysis.",
-      rating: 5,
-      avatar: "👩‍💻"
-    }
-  ];
-
   const useCases = [
     {
       title: "Sales Analysis",
@@ -243,7 +216,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
             </div>
           </div>
 
-          {/* How It Works - Redesigned */}
+          {/* How It Works - Uniform Size Cards */}
           <div className="mb-16">
             <div className="text-center mb-12">
               <h3 className="text-4xl font-bold text-white mb-4">How It Works</h3>
@@ -261,8 +234,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
                   const IconComponent = step.icon;
                   return (
                     <div key={index} className="relative group">
-                      {/* Step Card */}
-                      <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 hover:border-white/30 transition-all duration-300 hover:shadow-2xl transform hover:-translate-y-2">
+                      {/* Step Card - Fixed Height */}
+                      <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 hover:border-white/30 transition-all duration-300 hover:shadow-2xl transform hover:-translate-y-2 h-[400px] flex flex-col">
                         {/* Step Number & Icon */}
                         <div className="relative mb-6">
                           <div className={`w-20 h-20 bg-gradient-to-r ${step.color} rounded-full flex items-center justify-center mx-auto shadow-lg group-hover:scale-110 transition-transform duration-300`}>
@@ -273,10 +246,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
                           </div>
                         </div>
                         
-                        {/* Content */}
-                        <div className="text-center">
+                        {/* Content - Flex Grow */}
+                        <div className="text-center flex-1 flex flex-col">
                           <h4 className="text-2xl font-bold text-white mb-3">{step.title}</h4>
-                          <p className="text-slate-300 text-lg mb-4 leading-relaxed">{step.description}</p>
+                          <p className="text-slate-300 text-lg mb-4 leading-relaxed flex-1">{step.description}</p>
                           <p className="text-slate-400 text-sm leading-relaxed">{step.details}</p>
                         </div>
                         
@@ -399,31 +372,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
                   <div className="flex items-center space-x-2">
                     <Play className="h-4 w-4 text-cyan-400 group-hover:text-cyan-300" />
                     <code className="text-cyan-300 text-sm font-medium group-hover:text-cyan-200 transition-colors">"{command}"</code>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Testimonials */}
-          <div className="mb-16">
-            <h3 className="text-3xl font-bold text-white text-center mb-10">What Our Users Say</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {testimonials.map((testimonial, index) => (
-                <div key={index} className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20 hover:shadow-xl transition-shadow">
-                  <div className="flex items-center space-x-1 mb-4">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star key={star} className="h-4 w-4 text-yellow-400 fill-current" />
-                    ))}
-                  </div>
-                  <p className="text-slate-300 mb-4 italic">"{testimonial.comment}"</p>
-                  <div className="flex items-center space-x-3">
-                    <div className="text-2xl">{testimonial.avatar}</div>
-                    <div>
-                      <p className="font-semibold text-white">{testimonial.name}</p>
-                      <p className="text-sm text-slate-400">{testimonial.role}</p>
-                      <p className="text-xs text-cyan-400">{testimonial.company}</p>
-                    </div>
                   </div>
                 </div>
               ))}
