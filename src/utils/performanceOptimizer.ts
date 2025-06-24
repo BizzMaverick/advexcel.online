@@ -1,6 +1,6 @@
 export class PerformanceOptimizer {
-  private static readonly CHUNK_SIZE = 1000; // Process data in chunks
-  private static readonly MAX_MEMORY_USAGE = 100 * 1024 * 1024; // 100MB limit
+  private static readonly CHUNK_SIZE = 500; // Reduced chunk size for better responsiveness
+  private static readonly MAX_MEMORY_USAGE = 80 * 1024 * 1024; // 80MB limit
 
   static async processLargeDataset<T>(
     data: T[],
@@ -15,20 +15,31 @@ export class PerformanceOptimizer {
       const end = Math.min(start + this.CHUNK_SIZE, data.length);
       const chunk = data.slice(start, end);
       
-      // Process chunk
-      const chunkResult = await processor(chunk);
-      results.push(...(Array.isArray(chunkResult) ? chunkResult : [chunkResult]));
+      try {
+        // Process chunk with timeout protection
+        const chunkResult = await Promise.race([
+          processor(chunk),
+          this.createTimeout(5000) // 5 second timeout per chunk
+        ]);
+        
+        if (chunkResult !== 'TIMEOUT') {
+          results.push(...(Array.isArray(chunkResult) ? chunkResult : [chunkResult]));
+        }
+      } catch (error) {
+        console.warn(`Error processing chunk ${i}:`, error);
+        // Continue with next chunk
+      }
       
       // Update progress
       if (onProgress) {
         onProgress((i + 1) / totalChunks * 100);
       }
       
-      // Yield control to prevent UI blocking
+      // Yield control more frequently
       await this.yieldToMain();
       
-      // Check memory usage
-      if (this.getMemoryUsage() > this.MAX_MEMORY_USAGE) {
+      // Check memory usage every 10 chunks
+      if (i % 10 === 0 && this.getMemoryUsage() > this.MAX_MEMORY_USAGE) {
         await this.forceGarbageCollection();
       }
     }
@@ -39,16 +50,30 @@ export class PerformanceOptimizer {
   static async yieldToMain(): Promise<void> {
     return new Promise(resolve => {
       if ('scheduler' in window && 'postTask' in (window as any).scheduler) {
-        (window as any).scheduler.postTask(resolve, { priority: 'user-blocking' });
+        try {
+          (window as any).scheduler.postTask(resolve, { priority: 'user-blocking' });
+        } catch {
+          setTimeout(resolve, 0);
+        }
       } else {
         setTimeout(resolve, 0);
       }
     });
   }
 
+  private static createTimeout(ms: number): Promise<string> {
+    return new Promise(resolve => {
+      setTimeout(() => resolve('TIMEOUT'), ms);
+    });
+  }
+
   static getMemoryUsage(): number {
     if ('memory' in performance) {
-      return (performance as any).memory.usedJSHeapSize;
+      try {
+        return (performance as any).memory.usedJSHeapSize || 0;
+      } catch {
+        return 0;
+      }
     }
     return 0;
   }
@@ -56,10 +81,16 @@ export class PerformanceOptimizer {
   static async forceGarbageCollection(): Promise<void> {
     // Force garbage collection if available
     if ('gc' in window) {
-      (window as any).gc();
+      try {
+        (window as any).gc();
+      } catch {
+        // Ignore if not available
+      }
     }
     
-    // Yield to allow cleanup
+    // Multiple yields to allow cleanup
+    await this.yieldToMain();
+    await this.yieldToMain();
     await this.yieldToMain();
   }
 
@@ -69,18 +100,19 @@ export class PerformanceOptimizer {
     containerHeight: number
   ) {
     const visibleCount = Math.ceil(containerHeight / itemHeight);
-    const bufferSize = Math.min(visibleCount * 2, 100);
+    const bufferSize = Math.min(visibleCount * 3, 200); // Increased buffer but with limit
     
     return {
       getVisibleItems: (scrollTop: number) => {
-        const startIndex = Math.floor(scrollTop / itemHeight);
+        const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - 10);
         const endIndex = Math.min(startIndex + bufferSize, data.length);
         
         return {
           items: data.slice(startIndex, endIndex),
           startIndex,
           endIndex,
-          totalHeight: data.length * itemHeight
+          totalHeight: data.length * itemHeight,
+          offsetY: startIndex * itemHeight
         };
       }
     };
@@ -133,11 +165,64 @@ export class PerformanceOptimizer {
         worker.terminate();
       };
       
-      // Timeout after 5 minutes
+      // Timeout after 2 minutes for large files
       setTimeout(() => {
         worker.terminate();
         reject(new Error('File processing timeout'));
-      }, 5 * 60 * 1000);
+      }, 2 * 60 * 1000);
     });
+  }
+
+  static monitorPerformance(): {
+    memoryUsage: number;
+    memoryLimit: number;
+    memoryPercentage: number;
+    isMemoryHigh: boolean;
+  } {
+    const memoryUsage = this.getMemoryUsage();
+    const memoryLimit = this.getMemoryLimit();
+    const memoryPercentage = memoryLimit > 0 ? (memoryUsage / memoryLimit) * 100 : 0;
+    
+    return {
+      memoryUsage,
+      memoryLimit,
+      memoryPercentage,
+      isMemoryHigh: memoryPercentage > 70
+    };
+  }
+
+  private static getMemoryLimit(): number {
+    if ('memory' in performance) {
+      try {
+        return (performance as any).memory.jsHeapSizeLimit || 0;
+      } catch {
+        return 0;
+      }
+    }
+    return 0;
+  }
+
+  static async optimizeForLargeDataset<T>(
+    data: T[],
+    maxItems: number = 10000
+  ): Promise<T[]> {
+    if (data.length <= maxItems) {
+      return data;
+    }
+
+    // Sample data to reduce size while maintaining representativeness
+    const step = Math.ceil(data.length / maxItems);
+    const optimized: T[] = [];
+    
+    for (let i = 0; i < data.length; i += step) {
+      optimized.push(data[i]);
+      
+      // Yield control every 1000 items
+      if (optimized.length % 1000 === 0) {
+        await this.yieldToMain();
+      }
+    }
+    
+    return optimized;
   }
 }

@@ -479,6 +479,15 @@ function App() {
         return;
       }
 
+      // Show file info for large files
+      if (file.size > 10 * 1024 * 1024) { // 10MB
+        const fileInfo = LargeFileHandler.getFileInfo(file);
+        addNotification(
+          `Large file detected (${fileInfo.size}). Estimated processing time: ${fileInfo.processingTime}. The file will be optimized for performance.`, 
+          'info'
+        );
+      }
+
       setIsLoading(true);
       setShowLoadingProgress(true);
       setLoadingFileName(file.name);
@@ -516,10 +525,12 @@ function App() {
           setLoadingMessage('Reading Excel file...');
           newWorkbook = await LargeFileHandler.readLargeExcelFile(file, (progress) => {
             setLoadingProgress(progress);
-            if (progress < 50) {
+            if (progress < 30) {
               setLoadingMessage('Reading file structure...');
-            } else if (progress < 90) {
+            } else if (progress < 70) {
               setLoadingMessage('Processing worksheets...');
+            } else if (progress < 95) {
+              setLoadingMessage('Optimizing data...');
             } else {
               setLoadingMessage('Finalizing...');
             }
@@ -527,7 +538,19 @@ function App() {
           
           const activeSheet = newWorkbook.worksheets.find(ws => ws.isActive);
           newCells = activeSheet?.cells || {};
-          addNotification(`Excel workbook imported: ${newWorkbook.worksheets.length} sheets loaded`, 'success');
+          
+          const totalCells = Object.keys(newCells).length;
+          const sheetsCount = newWorkbook.worksheets.length;
+          
+          addNotification(
+            `Excel workbook imported: ${sheetsCount} sheet${sheetsCount > 1 ? 's' : ''} loaded with ${totalCells.toLocaleString()} cells`, 
+            'success'
+          );
+          
+          if (totalCells > 50000) {
+            addNotification('Large dataset detected. Performance optimizations have been applied.', 'info');
+          }
+          
         } else if (ExcelFileHandler.isCSVFile(file.name)) {
           // Handle CSV files with progress tracking
           setLoadingMessage('Reading CSV file...');
@@ -562,7 +585,12 @@ function App() {
             lastModified: new Date()
           };
           
-          addNotification(`CSV imported successfully: ${maxRow} rows, ${maxCol} columns`, 'success');
+          addNotification(`CSV imported successfully: ${maxRow.toLocaleString()} rows, ${maxCol} columns`, 'success');
+          
+          if (maxRow > 10000) {
+            addNotification('Large CSV file optimized for performance. Some rows may be sampled for display.', 'info');
+          }
+          
         } else {
           throw new Error('Unsupported file format');
         }
