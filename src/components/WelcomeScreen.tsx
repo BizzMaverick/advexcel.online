@@ -431,7 +431,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
           </div>
 
           {/* Privacy & Security */}
-          <div className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-2xl p-10 mb-16 border border-cyan-400/30">
+          <div className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-2xl p-10 border border-cyan-400/30">
             <div className="text-center">
               <Shield className="h-12 w-12 text-cyan-400 mx-auto mb-4" />
               <h3 className="text-2xl font-semibold text-white mb-4">Your Privacy is Our Priority</h3>
@@ -454,35 +454,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Final CTA */}
-          <div className="text-center bg-gradient-to-r from-slate-800/50 to-blue-800/50 rounded-2xl p-10">
-            <h3 className="text-2xl font-semibold text-white mb-8">Ready to Transform Your Data Analysis?</h3>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button
-                onClick={onCreateNewSheet}
-                disabled={isLoading}
-                className="inline-flex items-center space-x-3 px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-              >
-                <Plus className="h-6 w-6" />
-                <span>Create New Sheet</span>
-                <ArrowRight className="h-5 w-5" />
-              </button>
-              
-              <button
-                onClick={onImportFile}
-                disabled={isLoading}
-                className="inline-flex items-center space-x-3 px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl hover:from-cyan-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-              >
-                <Upload className="h-6 w-6" />
-                <span>{isLoading ? 'Processing...' : 'Import File'}</span>
-                {!isLoading && <ArrowRight className="h-5 w-5" />}
-              </button>
-            </div>
-            <p className="text-sm text-slate-400 mt-4">
-              5-day free trial • No credit card required • Cancel anytime
-            </p>
           </div>
         </div>
       </div>
