@@ -41,20 +41,17 @@ export class LargeFileHandler {
             // Use optimized reading options for very large files
             const workbook = XLSX.read(data, { 
               type: 'array',
-              cellDates: false,
-              cellNF: false,
+              cellDates: true, // Enable date parsing
+              cellNF: true,    // Keep number formats
               cellText: false,
-              sheetStubs: false,
+              sheetStubs: true, // Include empty cells
               bookDeps: false,
               bookFiles: false,
               bookProps: false,
               bookSheets: false,
               bookVBA: false,
-              dense: true,
-              // Additional optimizations for large files
-              raw: true,
-              codepage: 65001, // UTF-8
-              FS: '\t'
+              dense: false,    // Changed to false to ensure proper cell addressing
+              raw: false       // Changed to false to ensure proper value parsing
             });
             
             onProgress?.(30);
@@ -67,34 +64,28 @@ export class LargeFileHandler {
             const totalSheets = workbook.SheetNames.length;
             
             // Process sheets with stack optimization
-            await StackOptimizer.processArraySafely(
-              workbook.SheetNames.slice(0, 20), // Limit to 20 sheets max
-              async (sheetName, index) => {
-                try {
-                  const worksheet = workbook.Sheets[sheetName];
-                  if (!worksheet) return null;
-                  
-                  const sheetData = await this.processWorksheetOptimized(
-                    worksheet,
-                    sheetName,
-                    (sheetProgress) => {
-                      const totalProgress = 30 + (index / totalSheets) * 60 + (sheetProgress / totalSheets) * 60;
-                      onProgress?.(Math.min(totalProgress, 95));
-                    }
-                  );
-                  
-                  if (sheetData) {
-                    worksheets.push(sheetData);
+            for (let index = 0; index < workbook.SheetNames.length; index++) {
+              const sheetName = workbook.SheetNames[index];
+              try {
+                const worksheet = workbook.Sheets[sheetName];
+                if (!worksheet) continue;
+                
+                const sheetData = await this.processWorksheetOptimized(
+                  worksheet,
+                  sheetName,
+                  (sheetProgress) => {
+                    const totalProgress = 30 + (index / totalSheets) * 60 + (sheetProgress / totalSheets) * 60;
+                    onProgress?.(Math.min(totalProgress, 95));
                   }
-                  
-                  return null;
-                } catch (sheetError) {
-                  console.warn(`Error processing sheet ${sheetName}:`, sheetError);
-                  return null;
+                );
+                
+                if (sheetData) {
+                  worksheets.push(sheetData);
                 }
-              },
-              { chunkSize: 1, concurrent: false }
-            );
+              } catch (sheetError) {
+                console.warn(`Error processing sheet ${sheetName}:`, sheetError);
+              }
+            }
             
             if (worksheets.length === 0) {
               throw new Error('No valid worksheets could be processed');
@@ -149,64 +140,57 @@ export class LargeFileHandler {
       
       const totalRows = Math.max(0, range.e.r - range.s.r + 1);
       const totalCols = Math.max(0, range.e.c - range.s.c + 1);
-      const totalCells = totalRows * totalCols;
       
       // Apply intelligent limits based on file size and memory
       const maxRows = Math.min(totalRows, this.MAX_ROWS_PER_SHEET);
       const maxCols = Math.min(totalCols, this.MAX_COLS_PER_SHEET);
       
-      if (totalCells > 500000) { // More than 500k cells
-        console.warn(`Very large sheet detected (${totalCells} cells). Processing optimized subset: ${maxRows}x${maxCols}.`);
+      if (totalRows * totalCols > 500000) { // More than 500k cells
+        console.warn(`Very large sheet detected (${totalRows * totalCols} cells). Processing optimized subset: ${maxRows}x${maxCols}.`);
       }
+      
+      // Convert to JSON with headers
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+        header: 1,
+        defval: '',
+        raw: false,
+        range: 0
+      }) as any[][];
       
       const cells: { [key: string]: Cell } = {};
       let maxRow = 0;
       let maxCol = 0;
       
-      // Generate cell coordinates with safety limits
-      const coordinates = this.generateCellCoordinates(
-        range.s.r, 
-        range.s.c, 
-        Math.min(maxRows, 100000), // Hard limit for safety
-        Math.min(maxCols, 500)     // Hard limit for safety
-      );
-      
-      // Use stack-optimized processing
-      await StackOptimizer.processRecursively(
-        coordinates,
-        async (coord: { row: number; col: number }) => {
-          const { row, col } = coord;
+      // Process each row and column
+      for (let rowIndex = 0; rowIndex < Math.min(jsonData.length, maxRows); rowIndex++) {
+        const row = jsonData[rowIndex];
+        if (!Array.isArray(row)) continue;
+        
+        for (let colIndex = 0; colIndex < Math.min(row.length, maxCols); colIndex++) {
+          const cellValue = row[colIndex];
           
-          try {
-            const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-            const cellData = worksheet[cellAddress];
+          if (cellValue !== null && cellValue !== undefined && cellValue !== '') {
+            const cellId = `${this.numberToColumn(colIndex + 1)}${rowIndex + 1}`;
+            const numValue = Number(cellValue);
             
-            if (cellData && this.isValidCellData(cellData)) {
-              const cellId = `${this.numberToColumn(col + 1)}${row + 1}`;
-              const value = this.processCellValueSafe(cellData);
-              
-              if (value !== null && value !== undefined && value !== '') {
-                cells[cellId] = {
-                  id: cellId,
-                  row: row + 1,
-                  col: col + 1,
-                  value,
-                  type: this.determineCellType(value),
-                };
-                
-                maxRow = Math.max(maxRow, row + 1);
-                maxCol = Math.max(maxCol, col + 1);
-              }
-            }
+            cells[cellId] = {
+              id: cellId,
+              row: rowIndex + 1,
+              col: colIndex + 1,
+              value: isNaN(numValue) ? cellValue : numValue,
+              type: isNaN(numValue) ? 'text' : 'number',
+            };
             
-            return null;
-          } catch (error) {
-            console.warn(`Error processing cell at row ${row}, col ${col}:`, error);
-            return null;
+            maxRow = Math.max(maxRow, rowIndex + 1);
+            maxCol = Math.max(maxCol, colIndex + 1);
           }
-        },
-        1000 // Max recursion depth
-      );
+        }
+        
+        // Update progress every 100 rows
+        if (rowIndex % 100 === 0 && onProgress) {
+          onProgress((rowIndex / Math.min(jsonData.length, maxRows)) * 100);
+        }
+      }
       
       onProgress?.(100);
       
@@ -315,15 +299,19 @@ export class LargeFileHandler {
         // Use a more robust error handling approach
         try {
           Papa.parse(file, {
-            step: (results: any) => {
+            complete: (results) => {
               try {
-                if (results.data && Array.isArray(results.data) && rowIndex < maxRows) {
-                  const row = results.data.slice(0, maxCols);
+                if (results.data && Array.isArray(results.data)) {
+                  const rows = results.data as any[][];
                   
-                  // Use stack-safe processing for each row
-                  StackOptimizer.trampoline(() => {
-                    row.forEach((cellValue: any, colIndex: number) => {
-                      if (cellValue !== null && cellValue !== undefined && String(cellValue).trim() && colIndex < maxCols) {
+                  for (let rowIndex = 0; rowIndex < Math.min(rows.length, maxRows); rowIndex++) {
+                    const row = rows[rowIndex];
+                    if (!Array.isArray(row)) continue;
+                    
+                    for (let colIndex = 0; colIndex < Math.min(row.length, maxCols); colIndex++) {
+                      const cellValue = row[colIndex];
+                      
+                      if (cellValue !== null && cellValue !== undefined && String(cellValue).trim()) {
                         const cellId = `${this.numberToColumn(colIndex + 1)}${rowIndex + 1}`;
                         const trimmedValue = String(cellValue).trim();
                         
@@ -338,36 +326,31 @@ export class LargeFileHandler {
                           type: isNaN(numValue) ? 'text' : 'number',
                         };
                       }
-                    });
+                    }
                     
-                    return null; // End trampoline
-                  });
-                  
-                  rowIndex++;
-                  processedRows++;
-                  
-                  // Update progress every 500 rows for better performance
-                  if (processedRows % 500 === 0 && onProgress) {
-                    const progress = Math.min((processedRows / maxRows) * 90, 90);
-                    onProgress(progress);
+                    // Update progress every 100 rows
+                    if (rowIndex % 100 === 0 && onProgress) {
+                      const progress = Math.min((rowIndex / Math.min(rows.length, maxRows)) * 100, 100);
+                      onProgress(progress);
+                    }
                   }
+                  
+                  onProgress?.(100);
+                  resolve(cells);
+                } else {
+                  throw new Error('Invalid CSV data structure');
                 }
               } catch (error) {
-                console.warn('Error processing CSV row:', error);
+                reject(new Error(`Error processing CSV data: ${error instanceof Error ? error.message : 'Unknown error'}`));
               }
-            },
-            complete: () => {
-              onProgress?.(100);
-              resolve(cells);
             },
             error: (error: any) => {
               reject(new Error(`CSV parsing error: ${error.message}`));
             },
             header: false,
             skipEmptyLines: true,
-            fastMode: true,
-            chunk: 16384, // Larger chunks for better performance
-            worker: navigator.hardwareConcurrency > 4 // Use worker only if enough cores available
+            worker: navigator.hardwareConcurrency > 4, // Use worker only if enough cores available
+            preview: maxRows // Limit preview to max rows
           });
         } catch (error) {
           reject(new Error(`Failed to parse CSV: ${error instanceof Error ? error.message : 'Unknown error'}`));
