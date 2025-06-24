@@ -2,7 +2,46 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import { ErrorBoundary } from './utils/errorBoundary.tsx';
+import { LargeFileHandler } from './utils/largeFileHandler.ts';
+import { StackOptimizer } from './utils/stackOptimizer.ts';
+import { MemoryManager } from './utils/memoryManager.ts';
 import './index.css';
+
+// Initialize optimizations for large data handling
+StackOptimizer.initialize();
+MemoryManager.initialize();
+LargeFileHandler.initialize();
+
+// Increase stack size and optimize for large data processing
+if (typeof process !== 'undefined' && process.env) {
+  process.env.UV_THREADPOOL_SIZE = '128';
+  process.env.NODE_OPTIONS = '--max-old-space-size=8192'; // 8GB heap
+}
+
+// Configure global settings for large data handling
+if (typeof window !== 'undefined') {
+  // Increase maximum listeners for large datasets
+  if ('setMaxListeners' in EventTarget.prototype) {
+    (EventTarget.prototype as any).setMaxListeners?.(100);
+  }
+  
+  // Optimize garbage collection
+  if ('gc' in window) {
+    // Schedule periodic garbage collection for large data operations
+    setInterval(() => {
+      try {
+        (window as any).gc();
+      } catch (e) {
+        // Ignore if not available
+      }
+    }, 60000); // Every minute
+  }
+  
+  // Handle memory warnings
+  window.addEventListener('beforeunload', () => {
+    MemoryManager.cleanup();
+  });
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

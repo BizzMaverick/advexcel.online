@@ -19,13 +19,16 @@ export default defineConfig({
         }
       }
     },
-    chunkSizeWarningLimit: 1000,
-    target: 'es2015',
+    chunkSizeWarningLimit: 2000, // Increased for large data handling
+    target: 'es2020', // Updated for better performance
     minify: 'terser',
     terserOptions: {
       compress: {
         drop_console: true,
         drop_debugger: true
+      },
+      mangle: {
+        safari10: true
       }
     }
   },
@@ -35,6 +38,16 @@ export default defineConfig({
     host: true
   },
   define: {
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production')
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
+    // Increase stack size for large data processing
+    'process.env.UV_THREADPOOL_SIZE': '128'
+  },
+  esbuild: {
+    // Optimize for large data processing
+    target: 'es2020',
+    keepNames: true
+  },
+  worker: {
+    format: 'es'
   }
 });

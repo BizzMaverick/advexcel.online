@@ -1,6 +1,6 @@
 export class PerformanceOptimizer {
-  private static readonly CHUNK_SIZE = 500; // Reduced chunk size for better responsiveness
-  private static readonly MAX_MEMORY_USAGE = 80 * 1024 * 1024; // 80MB limit
+  private static readonly CHUNK_SIZE = 200; // Optimized for large data
+  private static readonly MAX_MEMORY_USAGE = 150 * 1024 * 1024; // Increased to 150MB
 
   static async processLargeDataset<T>(
     data: T[],
@@ -10,16 +10,17 @@ export class PerformanceOptimizer {
     const results: any[] = [];
     const totalChunks = Math.ceil(data.length / this.CHUNK_SIZE);
     
+    // Use requestIdleCallback for better performance
     for (let i = 0; i < totalChunks; i++) {
       const start = i * this.CHUNK_SIZE;
       const end = Math.min(start + this.CHUNK_SIZE, data.length);
       const chunk = data.slice(start, end);
       
       try {
-        // Process chunk with timeout protection
+        // Process chunk with enhanced timeout protection
         const chunkResult = await Promise.race([
           processor(chunk),
-          this.createTimeout(5000) // 5 second timeout per chunk
+          this.createTimeout(10000) // Increased timeout for large data
         ]);
         
         if (chunkResult !== 'TIMEOUT') {
@@ -35,11 +36,11 @@ export class PerformanceOptimizer {
         onProgress((i + 1) / totalChunks * 100);
       }
       
-      // Yield control more frequently
-      await this.yieldToMain();
+      // Enhanced yielding for large datasets
+      await this.yieldToMainEnhanced();
       
-      // Check memory usage every 10 chunks
-      if (i % 10 === 0 && this.getMemoryUsage() > this.MAX_MEMORY_USAGE) {
+      // More frequent memory checks for large data
+      if (i % 5 === 0 && this.getMemoryUsage() > this.MAX_MEMORY_USAGE) {
         await this.forceGarbageCollection();
       }
     }
@@ -47,18 +48,30 @@ export class PerformanceOptimizer {
     return results;
   }
 
-  static async yieldToMain(): Promise<void> {
+  static async yieldToMainEnhanced(): Promise<void> {
     return new Promise(resolve => {
+      // Use scheduler API if available for better performance
       if ('scheduler' in window && 'postTask' in (window as any).scheduler) {
         try {
           (window as any).scheduler.postTask(resolve, { priority: 'user-blocking' });
         } catch {
-          setTimeout(resolve, 0);
+          // Fallback to requestIdleCallback
+          if ('requestIdleCallback' in window) {
+            requestIdleCallback(() => resolve(), { timeout: 16 });
+          } else {
+            setTimeout(resolve, 0);
+          }
         }
+      } else if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => resolve(), { timeout: 16 });
       } else {
         setTimeout(resolve, 0);
       }
     });
+  }
+
+  static async yieldToMain(): Promise<void> {
+    return this.yieldToMainEnhanced();
   }
 
   private static createTimeout(ms: number): Promise<string> {
@@ -79,7 +92,7 @@ export class PerformanceOptimizer {
   }
 
   static async forceGarbageCollection(): Promise<void> {
-    // Force garbage collection if available
+    // Enhanced garbage collection for large datasets
     if ('gc' in window) {
       try {
         (window as any).gc();
@@ -88,10 +101,16 @@ export class PerformanceOptimizer {
       }
     }
     
-    // Multiple yields to allow cleanup
-    await this.yieldToMain();
-    await this.yieldToMain();
-    await this.yieldToMain();
+    // Multiple yields with different priorities
+    await this.yieldToMainEnhanced();
+    await this.yieldToMainEnhanced();
+    await this.yieldToMainEnhanced();
+    
+    // Clear any temporary large objects
+    if (typeof window !== 'undefined') {
+      (window as any).tempLargeData = null;
+      (window as any).processingCache = null;
+    }
   }
 
   static createVirtualizedProcessor<T>(
@@ -100,11 +119,11 @@ export class PerformanceOptimizer {
     containerHeight: number
   ) {
     const visibleCount = Math.ceil(containerHeight / itemHeight);
-    const bufferSize = Math.min(visibleCount * 3, 200); // Increased buffer but with limit
+    const bufferSize = Math.min(visibleCount * 5, 500); // Increased buffer for large data
     
     return {
       getVisibleItems: (scrollTop: number) => {
-        const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - 10);
+        const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - 20);
         const endIndex = Math.min(startIndex + bufferSize, data.length);
         
         return {
@@ -165,11 +184,11 @@ export class PerformanceOptimizer {
         worker.terminate();
       };
       
-      // Timeout after 2 minutes for large files
+      // Increased timeout for large files
       setTimeout(() => {
         worker.terminate();
         reject(new Error('File processing timeout'));
-      }, 2 * 60 * 1000);
+      }, 5 * 60 * 1000); // 5 minutes
     });
   }
 
@@ -178,6 +197,7 @@ export class PerformanceOptimizer {
     memoryLimit: number;
     memoryPercentage: number;
     isMemoryHigh: boolean;
+    isMemoryCritical: boolean;
   } {
     const memoryUsage = this.getMemoryUsage();
     const memoryLimit = this.getMemoryLimit();
@@ -187,7 +207,8 @@ export class PerformanceOptimizer {
       memoryUsage,
       memoryLimit,
       memoryPercentage,
-      isMemoryHigh: memoryPercentage > 70
+      isMemoryHigh: memoryPercentage > 70,
+      isMemoryCritical: memoryPercentage > 85
     };
   }
 
@@ -204,25 +225,117 @@ export class PerformanceOptimizer {
 
   static async optimizeForLargeDataset<T>(
     data: T[],
-    maxItems: number = 10000
+    maxItems: number = 50000 // Increased for large data support
   ): Promise<T[]> {
     if (data.length <= maxItems) {
       return data;
     }
 
-    // Sample data to reduce size while maintaining representativeness
+    // Intelligent sampling for very large datasets
     const step = Math.ceil(data.length / maxItems);
     const optimized: T[] = [];
     
-    for (let i = 0; i < data.length; i += step) {
-      optimized.push(data[i]);
-      
-      // Yield control every 1000 items
-      if (optimized.length % 1000 === 0) {
-        await this.yieldToMain();
+    // Use different sampling strategies based on data size
+    if (data.length > 1000000) {
+      // For very large datasets, use stratified sampling
+      const stratumSize = Math.floor(data.length / 10);
+      for (let stratum = 0; stratum < 10; stratum++) {
+        const stratumStart = stratum * stratumSize;
+        const stratumEnd = Math.min(stratumStart + stratumSize, data.length);
+        const stratumStep = Math.ceil(stratumSize / (maxItems / 10));
+        
+        for (let i = stratumStart; i < stratumEnd; i += stratumStep) {
+          optimized.push(data[i]);
+          
+          // Yield control every 5000 items
+          if (optimized.length % 5000 === 0) {
+            await this.yieldToMainEnhanced();
+          }
+        }
+      }
+    } else {
+      // For moderately large datasets, use systematic sampling
+      for (let i = 0; i < data.length; i += step) {
+        optimized.push(data[i]);
+        
+        // Yield control every 2000 items
+        if (optimized.length % 2000 === 0) {
+          await this.yieldToMainEnhanced();
+        }
       }
     }
     
     return optimized;
+  }
+
+  // Enhanced batch processing for large datasets
+  static async processBatches<T, R>(
+    data: T[],
+    processor: (batch: T[]) => Promise<R[]>,
+    options: {
+      batchSize?: number;
+      maxConcurrency?: number;
+      onProgress?: (progress: number) => void;
+      onBatchComplete?: (batchIndex: number, results: R[]) => void;
+    } = {}
+  ): Promise<R[]> {
+    const {
+      batchSize = this.CHUNK_SIZE,
+      maxConcurrency = 3,
+      onProgress,
+      onBatchComplete
+    } = options;
+
+    const results: R[] = [];
+    const totalBatches = Math.ceil(data.length / batchSize);
+    let completedBatches = 0;
+    let activeBatches = 0;
+
+    const processBatch = async (batchIndex: number): Promise<void> => {
+      const start = batchIndex * batchSize;
+      const end = Math.min(start + batchSize, data.length);
+      const batch = data.slice(start, end);
+
+      try {
+        activeBatches++;
+        const batchResults = await processor(batch);
+        results.push(...batchResults);
+        
+        if (onBatchComplete) {
+          onBatchComplete(batchIndex, batchResults);
+        }
+      } catch (error) {
+        console.warn(`Error processing batch ${batchIndex}:`, error);
+      } finally {
+        activeBatches--;
+        completedBatches++;
+        
+        if (onProgress) {
+          onProgress((completedBatches / totalBatches) * 100);
+        }
+      }
+    };
+
+    // Process batches with controlled concurrency
+    const batchPromises: Promise<void>[] = [];
+    
+    for (let i = 0; i < totalBatches; i++) {
+      // Wait if we've reached max concurrency
+      while (activeBatches >= maxConcurrency) {
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+      
+      batchPromises.push(processBatch(i));
+      
+      // Yield control periodically
+      if (i % 10 === 0) {
+        await this.yieldToMainEnhanced();
+      }
+    }
+
+    // Wait for all batches to complete
+    await Promise.all(batchPromises);
+    
+    return results;
   }
 }
