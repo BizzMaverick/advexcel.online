@@ -76,7 +76,9 @@ export class MemoryManager {
       
       try {
         const chunkResults = await processor(chunk);
-        results.push(...chunkResults);
+        if (Array.isArray(chunkResults)) {
+          results.push(...chunkResults);
+        }
       } catch (error) {
         if (this.isMemoryError(error)) {
           console.warn(`Memory error processing chunk ${i}, attempting recovery`);
@@ -85,11 +87,17 @@ export class MemoryManager {
           // Retry with smaller chunk
           const smallerChunk = chunk.slice(0, Math.floor(chunk.length / 2));
           if (smallerChunk.length > 0) {
-            const retryResults = await processor(smallerChunk);
-            results.push(...retryResults);
+            try {
+              const retryResults = await processor(smallerChunk);
+              if (Array.isArray(retryResults)) {
+                results.push(...retryResults);
+              }
+            } catch (retryError) {
+              console.warn(`Failed retry with smaller chunk:`, retryError);
+            }
           }
         } else {
-          throw error;
+          console.warn(`Error processing chunk ${i}:`, error);
         }
       }
       
@@ -145,15 +153,23 @@ export class MemoryManager {
 
   private static getMemoryUsage(): number {
     if ('memory' in performance) {
-      return (performance as any).memory.usedJSHeapSize || 0;
+      try {
+        return (performance as any).memory.usedJSHeapSize || 0;
+      } catch {
+        return 0;
+      }
     }
     return 0;
   }
 
   private static getAvailableMemory(): number {
     if ('memory' in performance) {
-      const memory = (performance as any).memory;
-      return memory.jsHeapSizeLimit - memory.usedJSHeapSize;
+      try {
+        const memory = (performance as any).memory;
+        return memory.jsHeapSizeLimit - memory.usedJSHeapSize;
+      } catch {
+        return 100 * 1024 * 1024; // Default 100MB
+      }
     }
     return 100 * 1024 * 1024; // Default 100MB
   }
@@ -161,7 +177,12 @@ export class MemoryManager {
   private static getCacheSize(): number {
     let size = 0;
     for (const [key, value] of this.cache) {
-      size += JSON.stringify(value).length;
+      try {
+        size += JSON.stringify(value).length;
+      } catch (error) {
+        // If we can't stringify, estimate size
+        size += 1000; // Assume 1KB
+      }
     }
     return size;
   }
@@ -172,7 +193,7 @@ export class MemoryManager {
     
     // Remove oldest 25% of entries
     const toRemove = Math.ceil(entries.length * 0.25);
-    for (let i = 0; i < toRemove; i++) {
+    for (let i = 0; i < toRemove && i < entries.length; i++) {
       this.cache.delete(entries[i][0]);
     }
   }
@@ -228,14 +249,20 @@ export class MemoryManager {
     
     // Additional emergency measures
     if ('performance' in window && 'clearMarks' in performance) {
-      performance.clearMarks();
-      performance.clearMeasures();
+      try {
+        performance.clearMarks();
+        performance.clearMeasures();
+      } catch (e) {
+        // Ignore errors
+      }
     }
     
     // Clear any large objects from global scope
     if (typeof window !== 'undefined') {
       // Clear any large temporary variables
       (window as any).tempLargeData = null;
+      (window as any).processingCache = null;
+      (window as any).largeDataset = null;
     }
   }
 
@@ -251,7 +278,11 @@ export class MemoryManager {
   private static async yieldToMain(): Promise<void> {
     return new Promise(resolve => {
       if ('scheduler' in window && 'postTask' in (window as any).scheduler) {
-        (window as any).scheduler.postTask(resolve, { priority: 'user-blocking' });
+        try {
+          (window as any).scheduler.postTask(resolve, { priority: 'user-blocking' });
+        } catch {
+          setTimeout(resolve, 0);
+        }
       } else {
         setTimeout(resolve, 0);
       }
@@ -289,13 +320,17 @@ export class MemoryManager {
   private static setupMemoryMonitoring(): void {
     // Monitor memory usage
     setInterval(() => {
-      const usage = this.getMemoryUsage();
-      const available = this.getAvailableMemory();
-      const percentage = (usage / (usage + available)) * 100;
-      
-      if (percentage > 85) {
-        console.warn(`High memory usage detected: ${percentage.toFixed(1)}%`);
-        this.forceCleanup();
+      try {
+        const usage = this.getMemoryUsage();
+        const available = this.getAvailableMemory();
+        const percentage = (usage / (usage + available)) * 100;
+        
+        if (percentage > 85) {
+          console.warn(`High memory usage detected: ${percentage.toFixed(1)}%`);
+          this.forceCleanup();
+        }
+      } catch (error) {
+        // Ignore monitoring errors
       }
     }, 10000); // Check every 10 seconds
   }

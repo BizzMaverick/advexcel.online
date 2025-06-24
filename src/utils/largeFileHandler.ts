@@ -8,10 +8,10 @@ import { MemoryManager } from './memoryManager';
 
 export class LargeFileHandler {
   private static readonly MAX_CELLS_PER_CHUNK = 1000; // Optimized chunk size
-  private static readonly MAX_FILE_SIZE = 500 * 1024 * 1024; // Increased to 500MB
+  private static readonly MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
   private static readonly MEMORY_THRESHOLD = 100 * 1024 * 1024; // 100MB memory threshold
-  private static readonly MAX_ROWS_PER_SHEET = 100000; // Increased row limit
-  private static readonly MAX_COLS_PER_SHEET = 500; // Increased column limit
+  private static readonly MAX_ROWS_PER_SHEET = 100000; // 100k rows limit
+  private static readonly MAX_COLS_PER_SHEET = 500; // 500 columns limit
 
   static async readLargeExcelFile(
     file: File,
@@ -23,7 +23,7 @@ export class LargeFileHandler {
     // Check file size and memory
     const canProcess = this.canProcessFile(file);
     if (!canProcess.canProcess) {
-      throw new Error(canProcess.reason);
+      throw new Error(canProcess.reason || 'Cannot process this file');
     }
 
     onProgress?.(5);
@@ -72,7 +72,7 @@ export class LargeFileHandler {
               async (sheetName, index) => {
                 try {
                   const worksheet = workbook.Sheets[sheetName];
-                  if (!worksheet) return;
+                  if (!worksheet) return null;
                   
                   const sheetData = await this.processWorksheetOptimized(
                     worksheet,
@@ -87,8 +87,10 @@ export class LargeFileHandler {
                     worksheets.push(sheetData);
                   }
                   
+                  return null;
                 } catch (sheetError) {
                   console.warn(`Error processing sheet ${sheetName}:`, sheetError);
+                  return null;
                 }
               },
               { chunkSize: 1, concurrent: false }
@@ -136,9 +138,17 @@ export class LargeFileHandler {
     onProgress?: (progress: number) => void
   ): Promise<WorksheetData | null> {
     try {
-      const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
-      const totalRows = range.e.r - range.s.r + 1;
-      const totalCols = range.e.c - range.s.c + 1;
+      // Safely get range with fallback
+      let range;
+      try {
+        range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
+      } catch (error) {
+        console.warn(`Error decoding range for sheet ${sheetName}:`, error);
+        range = { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } };
+      }
+      
+      const totalRows = Math.max(0, range.e.r - range.s.r + 1);
+      const totalCols = Math.max(0, range.e.c - range.s.c + 1);
       const totalCells = totalRows * totalCols;
       
       // Apply intelligent limits based on file size and memory
@@ -153,30 +163,46 @@ export class LargeFileHandler {
       let maxRow = 0;
       let maxCol = 0;
       
+      // Generate cell coordinates with safety limits
+      const coordinates = this.generateCellCoordinates(
+        range.s.r, 
+        range.s.c, 
+        Math.min(maxRows, 100000), // Hard limit for safety
+        Math.min(maxCols, 500)     // Hard limit for safety
+      );
+      
       // Use stack-optimized processing
       await StackOptimizer.processRecursively(
-        this.generateCellCoordinates(range.s.r, range.s.c, maxRows, maxCols),
+        coordinates,
         async (coord: { row: number; col: number }) => {
           const { row, col } = coord;
-          const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-          const cellData = worksheet[cellAddress];
           
-          if (cellData && this.isValidCellData(cellData)) {
-            const cellId = `${this.numberToColumn(col + 1)}${row + 1}`;
-            const value = this.processCellValueSafe(cellData);
+          try {
+            const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+            const cellData = worksheet[cellAddress];
             
-            if (value !== null && value !== undefined && value !== '') {
-              cells[cellId] = {
-                id: cellId,
-                row: row + 1,
-                col: col + 1,
-                value,
-                type: this.determineCellType(value),
-              };
+            if (cellData && this.isValidCellData(cellData)) {
+              const cellId = `${this.numberToColumn(col + 1)}${row + 1}`;
+              const value = this.processCellValueSafe(cellData);
               
-              maxRow = Math.max(maxRow, row + 1);
-              maxCol = Math.max(maxCol, col + 1);
+              if (value !== null && value !== undefined && value !== '') {
+                cells[cellId] = {
+                  id: cellId,
+                  row: row + 1,
+                  col: col + 1,
+                  value,
+                  type: this.determineCellType(value),
+                };
+                
+                maxRow = Math.max(maxRow, row + 1);
+                maxCol = Math.max(maxCol, col + 1);
+              }
             }
+            
+            return null;
+          } catch (error) {
+            console.warn(`Error processing cell at row ${row}, col ${col}:`, error);
+            return null;
           }
         },
         1000 // Max recursion depth
@@ -206,6 +232,14 @@ export class LargeFileHandler {
   ): Array<{ row: number; col: number }> {
     const coordinates: Array<{ row: number; col: number }> = [];
     
+    // Safety check to prevent excessive memory usage
+    const totalCells = maxRows * maxCols;
+    if (totalCells > 1000000) {
+      console.warn(`Limiting cell coordinates generation from ${totalCells} to 1,000,000 cells`);
+      maxRows = Math.min(maxRows, 1000);
+      maxCols = Math.min(maxCols, 1000);
+    }
+    
     for (let row = startRow; row < startRow + maxRows; row++) {
       for (let col = startCol; col < startCol + maxCols; col++) {
         coordinates.push({ row, col });
@@ -227,14 +261,14 @@ export class LargeFileHandler {
       if (cellData.t === 'n') {
         return Number(cellData.v);
       } else if (cellData.t === 's' || cellData.t === 'str') {
-        const strValue = String(cellData.v);
+        const strValue = String(cellData.v || '');
         return strValue.length > 2000 ? strValue.substring(0, 2000) + '...' : strValue;
       } else if (cellData.t === 'b') {
         return Boolean(cellData.v);
       } else if (cellData.t === 'd') {
         return cellData.v instanceof Date ? cellData.v.toISOString().split('T')[0] : String(cellData.v);
       } else {
-        const value = String(cellData.v);
+        const value = String(cellData.v || '');
         return value.length > 2000 ? value.substring(0, 2000) + '...' : value;
       }
     } catch (error) {
@@ -259,7 +293,7 @@ export class LargeFileHandler {
       result = String.fromCharCode(65 + (num % 26)) + result;
       num = Math.floor(num / 26);
     }
-    return result;
+    return result || 'A'; // Fallback to 'A' if calculation fails
   }
 
   static async readLargeCSVFile(
@@ -278,61 +312,66 @@ export class LargeFileHandler {
         const maxRows = this.MAX_ROWS_PER_SHEET;
         const maxCols = this.MAX_COLS_PER_SHEET;
         
-        Papa.parse(file, {
-          step: (results: any) => {
-            try {
-              if (results.data && Array.isArray(results.data) && rowIndex < maxRows) {
-                const row = results.data.slice(0, maxCols);
-                
-                // Use stack-safe processing for each row
-                StackOptimizer.trampoline(() => {
-                  row.forEach((cellValue: any, colIndex: number) => {
-                    if (cellValue && String(cellValue).trim() && colIndex < maxCols) {
-                      const cellId = `${this.numberToColumn(colIndex + 1)}${rowIndex + 1}`;
-                      const trimmedValue = String(cellValue).trim();
-                      
-                      const finalValue = trimmedValue.length > 1000 ? trimmedValue.substring(0, 1000) + '...' : trimmedValue;
-                      const numValue = Number(finalValue);
-                      
-                      cells[cellId] = {
-                        id: cellId,
-                        row: rowIndex + 1,
-                        col: colIndex + 1,
-                        value: isNaN(numValue) ? finalValue : numValue,
-                        type: isNaN(numValue) ? 'text' : 'number',
-                      };
-                    }
+        // Use a more robust error handling approach
+        try {
+          Papa.parse(file, {
+            step: (results: any) => {
+              try {
+                if (results.data && Array.isArray(results.data) && rowIndex < maxRows) {
+                  const row = results.data.slice(0, maxCols);
+                  
+                  // Use stack-safe processing for each row
+                  StackOptimizer.trampoline(() => {
+                    row.forEach((cellValue: any, colIndex: number) => {
+                      if (cellValue !== null && cellValue !== undefined && String(cellValue).trim() && colIndex < maxCols) {
+                        const cellId = `${this.numberToColumn(colIndex + 1)}${rowIndex + 1}`;
+                        const trimmedValue = String(cellValue).trim();
+                        
+                        const finalValue = trimmedValue.length > 1000 ? trimmedValue.substring(0, 1000) + '...' : trimmedValue;
+                        const numValue = Number(finalValue);
+                        
+                        cells[cellId] = {
+                          id: cellId,
+                          row: rowIndex + 1,
+                          col: colIndex + 1,
+                          value: isNaN(numValue) ? finalValue : numValue,
+                          type: isNaN(numValue) ? 'text' : 'number',
+                        };
+                      }
+                    });
+                    
+                    return null; // End trampoline
                   });
                   
-                  return null; // End trampoline
-                });
-                
-                rowIndex++;
-                processedRows++;
-                
-                // Update progress every 500 rows for better performance
-                if (processedRows % 500 === 0 && onProgress) {
-                  const progress = Math.min((processedRows / maxRows) * 90, 90);
-                  onProgress(progress);
+                  rowIndex++;
+                  processedRows++;
+                  
+                  // Update progress every 500 rows for better performance
+                  if (processedRows % 500 === 0 && onProgress) {
+                    const progress = Math.min((processedRows / maxRows) * 90, 90);
+                    onProgress(progress);
+                  }
                 }
+              } catch (error) {
+                console.warn('Error processing CSV row:', error);
               }
-            } catch (error) {
-              console.warn('Error processing CSV row:', error);
-            }
-          },
-          complete: () => {
-            onProgress?.(100);
-            resolve(cells);
-          },
-          error: (error: any) => {
-            reject(new Error(`CSV parsing error: ${error.message}`));
-          },
-          header: false,
-          skipEmptyLines: true,
-          fastMode: true,
-          chunk: 16384, // Larger chunks for better performance
-          worker: false
-        });
+            },
+            complete: () => {
+              onProgress?.(100);
+              resolve(cells);
+            },
+            error: (error: any) => {
+              reject(new Error(`CSV parsing error: ${error.message}`));
+            },
+            header: false,
+            skipEmptyLines: true,
+            fastMode: true,
+            chunk: 16384, // Larger chunks for better performance
+            worker: navigator.hardwareConcurrency > 4 // Use worker only if enough cores available
+          });
+        } catch (error) {
+          reject(new Error(`Failed to parse CSV: ${error instanceof Error ? error.message : 'Unknown error'}`));
+        }
       });
     });
   }
@@ -341,7 +380,7 @@ export class LargeFileHandler {
     if (file.size > this.MAX_FILE_SIZE) {
       return {
         canProcess: false,
-        reason: `File too large. Maximum size is ${this.MAX_FILE_SIZE / 1024 / 1024}MB`
+        reason: `File too large. Maximum size is ${Math.floor(this.MAX_FILE_SIZE / 1024 / 1024)}MB`
       };
     }
 
@@ -369,7 +408,7 @@ export class LargeFileHandler {
 
   private static estimateMemoryUsage(file: File): number {
     // More accurate estimation based on file type
-    const extension = file.name.toLowerCase().split('.').pop();
+    const extension = file.name.toLowerCase().split('.').pop() || '';
     
     switch (extension) {
       case 'xlsx':

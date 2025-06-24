@@ -171,14 +171,21 @@ export class ExcelCommandProcessor {
       textColor: this.getTextColor(color)
     };
 
-    const cellIds = this.parseRange(range);
-    const formatting = cellIds.map(cellId => ({ cellId, format }));
+    try {
+      const cellIds = this.parseRange(range);
+      const formatting = cellIds.map(cellId => ({ cellId, format }));
 
-    return {
-      success: true,
-      message: `Applied conditional formatting to ${range} where ${condition}`,
-      formatting
-    };
+      return {
+        success: true,
+        message: `Applied conditional formatting to ${range} where ${condition}`,
+        formatting
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Error applying formatting: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
   }
 
   private isDataManipulationCommand(command: string): boolean {
@@ -280,24 +287,32 @@ export class ExcelCommandProcessor {
     }
 
     const range = rangeMatch[1];
-    const cellIds = this.parseRange(range);
-    const cellUpdates: { [key: string]: Cell } = {};
+    
+    try {
+      const cellIds = this.parseRange(range);
+      const cellUpdates: { [key: string]: Cell } = {};
 
-    cellIds.forEach(cellId => {
-      cellUpdates[cellId] = {
-        id: cellId,
-        row: this.getRowFromCellId(cellId),
-        col: this.getColFromCellId(cellId),
-        value: '',
-        type: 'text'
+      cellIds.forEach(cellId => {
+        cellUpdates[cellId] = {
+          id: cellId,
+          row: this.getRowFromCellId(cellId),
+          col: this.getColFromCellId(cellId),
+          value: '',
+          type: 'text'
+        };
+      });
+
+      return {
+        success: true,
+        message: `Cleared ${range}`,
+        cellUpdates
       };
-    });
-
-    return {
-      success: true,
-      message: `Cleared ${range}`,
-      cellUpdates
-    };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Error clearing range: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
   }
 
   private isCellOperationCommand(command: string): boolean {
@@ -397,20 +412,39 @@ export class ExcelCommandProcessor {
 
   // Helper methods
   private parseRange(range: string): string[] {
-    const match = range.match(/([A-Z]+)(\d+):([A-Z]+)(\d+)/);
-    if (!match) return [range];
+    try {
+      const match = range.match(/([A-Z]+)(\d+):([A-Z]+)(\d+)/);
+      if (!match) return [range];
 
-    const [, startCol, startRow, endCol, endRow] = match;
-    const startColNum = this.columnToNumber(startCol);
-    const endColNum = this.columnToNumber(endCol);
-    const cells: string[] = [];
-
-    for (let row = parseInt(startRow); row <= parseInt(endRow); row++) {
-      for (let col = startColNum; col <= endColNum; col++) {
-        cells.push(this.numberToColumn(col) + row);
+      const [, startCol, startRow, endCol, endRow] = match;
+      const startColNum = this.columnToNumber(startCol);
+      const endColNum = this.columnToNumber(endCol);
+      
+      // Safety check for large ranges
+      const rowCount = parseInt(endRow) - parseInt(startRow) + 1;
+      const colCount = endColNum - startColNum + 1;
+      
+      if (rowCount * colCount > 10000) {
+        console.warn(`Large range detected: ${rowCount} rows x ${colCount} columns. This may impact performance.`);
       }
+      
+      const cells: string[] = [];
+      
+      // Limit to reasonable size to prevent stack overflow
+      const maxRows = Math.min(rowCount, 1000);
+      const maxCols = Math.min(colCount, 100);
+      
+      for (let row = parseInt(startRow); row < parseInt(startRow) + maxRows; row++) {
+        for (let col = startColNum; col < startColNum + maxCols; col++) {
+          cells.push(this.numberToColumn(col) + row);
+        }
+      }
+      
+      return cells;
+    } catch (error) {
+      console.error('Error parsing range:', error);
+      return [range];
     }
-    return cells;
   }
 
   private columnToNumber(column: string): number {
@@ -428,7 +462,7 @@ export class ExcelCommandProcessor {
       result = String.fromCharCode(65 + (num % 26)) + result;
       num = Math.floor(num / 26);
     }
-    return result;
+    return result || 'A'; // Fallback to 'A' if calculation fails
   }
 
   private getRowFromCellId(cellId: string): number {
@@ -484,29 +518,96 @@ export class ExcelCommandProcessor {
         }
       }
 
-      // Basic arithmetic evaluation
-      return new Function('return ' + cleanFormula)();
+      // Basic arithmetic evaluation with safety
+      try {
+        // Create a safe evaluation function with timeout
+        const evalWithTimeout = (code: string, timeout: number = 1000) => {
+          return new Promise((resolve, reject) => {
+            const worker = new Worker(
+              URL.createObjectURL(new Blob([
+                `onmessage = function(e) {
+                  try {
+                    const result = eval(e.data);
+                    postMessage({ result });
+                  } catch (error) {
+                    postMessage({ error: error.message });
+                  }
+                }`
+              ], { type: 'application/javascript' }))
+            );
+            
+            const timeoutId = setTimeout(() => {
+              worker.terminate();
+              reject(new Error('Evaluation timed out'));
+            }, timeout);
+            
+            worker.onmessage = (e) => {
+              clearTimeout(timeoutId);
+              worker.terminate();
+              if (e.data.error) {
+                reject(new Error(e.data.error));
+              } else {
+                resolve(e.data.result);
+              }
+            };
+            
+            worker.onerror = (error) => {
+              clearTimeout(timeoutId);
+              worker.terminate();
+              reject(error);
+            };
+            
+            worker.postMessage(code);
+          });
+        };
+        
+        // Try to evaluate with worker first
+        try {
+          return evalWithTimeout(`(${cleanFormula})`);
+        } catch {
+          // Fallback to direct evaluation with simple expressions
+          if (/^[\d\s\+\-\*\/\(\)\.]+$/.test(cleanFormula)) {
+            return new Function('return ' + cleanFormula)();
+          } else {
+            throw new Error('Formula contains unsupported operations');
+          }
+        }
+      } catch (evalError) {
+        console.warn('Formula evaluation error:', evalError);
+        return '#ERROR!';
+      }
     } catch (error) {
+      console.warn('Formula processing error:', error);
       return '#ERROR!';
     }
   }
 
   private calculateSum(range: string): number {
-    const cellIds = this.parseRange(range);
-    return cellIds.reduce((sum, cellId) => {
-      const cell = this.cells[cellId];
-      const value = cell ? Number(cell.value) : 0;
-      return sum + (isNaN(value) ? 0 : value);
-    }, 0);
+    try {
+      const cellIds = this.parseRange(range);
+      return cellIds.reduce((sum, cellId) => {
+        const cell = this.cells[cellId];
+        const value = cell ? Number(cell.value) : 0;
+        return sum + (isNaN(value) ? 0 : value);
+      }, 0);
+    } catch (error) {
+      console.warn('Error calculating sum:', error);
+      return 0;
+    }
   }
 
   private calculateAverage(range: string): number {
-    const cellIds = this.parseRange(range);
-    const values = cellIds.map(cellId => {
-      const cell = this.cells[cellId];
-      return cell ? Number(cell.value) : 0;
-    }).filter(val => !isNaN(val) && val !== 0);
-    
-    return values.length > 0 ? values.reduce((sum, val) => sum + val, 0) / values.length : 0;
+    try {
+      const cellIds = this.parseRange(range);
+      const values = cellIds.map(cellId => {
+        const cell = this.cells[cellId];
+        return cell ? Number(cell.value) : 0;
+      }).filter(val => !isNaN(val) && val !== 0);
+      
+      return values.length > 0 ? values.reduce((sum, val) => sum + val, 0) / values.length : 0;
+    } catch (error) {
+      console.warn('Error calculating average:', error);
+      return 0;
+    }
   }
 }

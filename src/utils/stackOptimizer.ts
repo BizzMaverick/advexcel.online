@@ -82,7 +82,9 @@ export class StackOptimizer {
       for (const item of batch) {
         try {
           const result = await processor(item);
-          results.push(result);
+          if (result !== undefined) {
+            results.push(result);
+          }
         } catch (error) {
           console.warn('Error in recursive processing:', error);
         }
@@ -123,7 +125,7 @@ export class StackOptimizer {
       const chunk = data.slice(i, i + chunkSize);
       
       // Process chunk
-      const chunkResults = chunk.map(processor);
+      const chunkResults = chunk.map(processor).filter(result => result !== undefined);
       results.push(...chunkResults);
 
       processedChunks++;
@@ -204,8 +206,14 @@ export class StackOptimizer {
       } else {
         // Process chunk sequentially
         for (let j = 0; j < chunk.length; j++) {
-          const result = await processor(chunk[j], i + j);
-          results.push(result);
+          try {
+            const result = await processor(chunk[j], i + j);
+            if (result !== undefined) {
+              results.push(result);
+            }
+          } catch (error) {
+            console.warn(`Error processing item at index ${i + j}:`, error);
+          }
         }
       }
       
@@ -238,7 +246,11 @@ export class StackOptimizer {
   private static async yieldControl(): Promise<void> {
     return new Promise(resolve => {
       if ('scheduler' in window && 'postTask' in (window as any).scheduler) {
-        (window as any).scheduler.postTask(resolve, { priority: 'user-blocking' });
+        try {
+          (window as any).scheduler.postTask(resolve, { priority: 'user-blocking' });
+        } catch {
+          setTimeout(resolve, 0);
+        }
       } else {
         setTimeout(resolve, 0);
       }
@@ -247,7 +259,11 @@ export class StackOptimizer {
 
   private static getMemoryUsage(): number {
     if ('memory' in performance) {
-      return (performance as any).memory.usedJSHeapSize || 0;
+      try {
+        return (performance as any).memory.usedJSHeapSize || 0;
+      } catch {
+        return 0;
+      }
     }
     return 0;
   }
@@ -271,6 +287,7 @@ export class StackOptimizer {
     // Increase stack size if possible
     if (typeof process !== 'undefined' && process.env) {
       process.env.UV_THREADPOOL_SIZE = '128';
+      process.env.NODE_OPTIONS = '--max-old-space-size=8192';
     }
 
     // Set up error handling for stack overflow

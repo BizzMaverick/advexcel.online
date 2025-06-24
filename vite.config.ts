@@ -24,7 +24,7 @@ export default defineConfig({
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true,
+        drop_console: false, // Keep console logs for debugging
         drop_debugger: true
       },
       mangle: {
@@ -35,19 +35,32 @@ export default defineConfig({
   base: '/',
   server: {
     port: 3000,
-    host: true
+    host: true,
+    hmr: {
+      overlay: false // Disable error overlay for better performance
+    }
   },
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
     // Increase stack size for large data processing
-    'process.env.UV_THREADPOOL_SIZE': '128'
+    'process.env.UV_THREADPOOL_SIZE': JSON.stringify('128'),
+    'process.env.NODE_OPTIONS': JSON.stringify('--max-old-space-size=8192')
   },
   esbuild: {
     // Optimize for large data processing
     target: 'es2020',
-    keepNames: true
+    keepNames: true,
+    logOverride: { 'this-is-undefined-in-esm': 'silent' }
   },
   worker: {
     format: 'es'
+  },
+  // Increase memory limit for node
+  css: {
+    devSourcemap: false // Disable sourcemaps for CSS in development for better performance
+  },
+  // Increase performance for large files
+  json: {
+    stringify: true
   }
 });
