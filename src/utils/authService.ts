@@ -2,6 +2,7 @@ import { DeviceService } from './deviceService';
 import { SecurityService } from './securityService';
 import { AuditService } from './auditService';
 import { RateLimitService } from './rateLimitService';
+import { SMSService } from './smsService';
 import { 
   User, 
   AuthTokens, 
@@ -15,7 +16,6 @@ import {
 } from '../types/auth';
 import { JWTService } from './jwtService';
 import { CryptoService } from './cryptoService';
-import * as otplib from 'otplib';
 
 export class AuthService {
   private static readonly API_BASE = process.env.VITE_API_BASE || 'https://api.excelanalyzerpro.com';
@@ -194,11 +194,17 @@ export class AuthService {
       await this.storeUser(user, hashedPassword);
 
       // Generate and send OTP
-      const otp = this.generateOTP();
+      const otp = CryptoService.generateOTP();
       await this.storeOTP(signupData.identifier, otp);
       
-      // In production, this would send an actual email/SMS
-      console.log(`OTP for ${signupData.identifier}: ${otp}`);
+      // Send OTP via SMS or email
+      if (signupData.identifier.includes('@')) {
+        // Send email OTP (not implemented in this demo)
+        console.log(`Email OTP for ${signupData.identifier}: ${otp}`);
+      } else {
+        // Send SMS OTP
+        await SMSService.sendOTP(signupData.identifier, otp);
+      }
 
       // Audit log
       await AuditService.log({
@@ -232,20 +238,37 @@ export class AuthService {
       }
 
       // Generate OTP
-      const otp = this.generateOTP();
+      const otp = CryptoService.generateOTP();
       
       // Store OTP
       await this.storeOTP(identifier, otp);
       
-      // In production, send actual email/SMS
+      // Send OTP via appropriate channel
       if (type === 'email') {
-        // Send email with OTP
+        // In production, send actual email
         console.log(`Email OTP for ${identifier}: ${otp}`);
         // await this.sendEmailOTP(identifier, otp);
+        
+        // For demo, store in localStorage to display in UI
+        localStorage.setItem(`otp_${identifier}`, JSON.stringify({
+          code: otp,
+          timestamp: Date.now(),
+          attempts: 0
+        }));
       } else {
         // Send SMS with OTP
-        console.log(`SMS OTP for ${identifier}: ${otp}`);
-        // await this.sendSMSOTP(identifier, otp);
+        const smsResult = await SMSService.sendOTP(identifier, otp);
+        
+        if (!smsResult.success) {
+          throw new Error(smsResult.message);
+        }
+        
+        // For demo, store in localStorage to display in UI
+        localStorage.setItem(`otp_${identifier}`, JSON.stringify({
+          code: otp,
+          timestamp: Date.now(),
+          attempts: 0
+        }));
       }
 
       // Log OTP generation
@@ -417,9 +440,9 @@ export class AuthService {
 
   // MFA Methods
   static async setupMFA(userId: string): Promise<MFASetup> {
-    const secret = otplib.authenticator.generateSecret();
-    const qrCode = await this.generateMFAQRCode(secret, userId);
-    const backupCodes = this.generateBackupCodes();
+    const secret = CryptoService.generateMFASecret();
+    const qrCode = await CryptoService.generateMFAQRCode(secret, userId);
+    const backupCodes = CryptoService.generateBackupCodes();
 
     // Store MFA secret (encrypted)
     await this.storeMFASecret(userId, secret);
@@ -452,7 +475,7 @@ export class AuthService {
       const secret = await this.getMFASecret(userId);
       if (!secret) return false;
 
-      return otplib.authenticator.verify({ token: code, secret });
+      return CryptoService.verifyTOTP(code, secret);
     } catch (error) {
       return false;
     }
@@ -663,33 +686,12 @@ export class AuthService {
   }
 
   // OTP Methods
-  private static generateOTP(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  }
-
   private static async storeOTP(identifier: string, otp: string): Promise<void> {
     localStorage.setItem(`otp_${identifier}`, JSON.stringify({
       code: otp,
       timestamp: Date.now(),
       attempts: 0
     }));
-  }
-
-  private static async generateMFAQRCode(secret: string, userId: string): Promise<string> {
-    const issuer = 'Excel Pro AI';
-    const otpauth = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(userId)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}`;
-    
-    // In production, use a QR code library
-    return `data:image/svg+xml;base64,${btoa(`<svg>QR Code for: ${otpauth}</svg>`)}`;
-  }
-
-  private static generateBackupCodes(): string[] {
-    const codes: string[] = [];
-    for (let i = 0; i < 10; i++) {
-      const code = Math.random().toString(36).substr(2, 8).toUpperCase();
-      codes.push(code);
-    }
-    return codes;
   }
 
   // Storage Methods

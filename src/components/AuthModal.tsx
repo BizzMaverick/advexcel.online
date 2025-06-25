@@ -8,6 +8,7 @@ import { ReferralService } from '../utils/referralService';
 import { DeviceService } from '../utils/deviceService';
 import { SecurityService } from '../utils/securityService';
 import { AuthService } from '../utils/authService';
+import { SMSService } from './smsService';
 import 'react-phone-number-input/style.css';
 
 interface AuthModalProps {
@@ -111,10 +112,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
         startOtpTimer();
         
         // For demo purposes, retrieve the OTP that was generated
-        const storedData = localStorage.getItem(`otp_${formData.identifier}`);
-        if (storedData) {
-          const { code } = JSON.parse(storedData);
-          setDemoOTP(code);
+        if (identifierType === 'phone') {
+          // Get OTP from SMS service for demo
+          const sentOTP = SMSService.getLastSentOTP(formData.identifier);
+          if (sentOTP) {
+            setDemoOTP(sentOTP);
+          }
+        } else {
+          // Get email OTP from localStorage for demo
+          const storedData = localStorage.getItem(`otp_${formData.identifier}`);
+          if (storedData) {
+            const { code } = JSON.parse(storedData);
+            setDemoOTP(code);
+          }
         }
       } else {
         setError(result.message);
@@ -399,17 +409,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
               <div className="flex items-start space-x-3">
                 <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
                 <div className="flex-1">
-                  <h3 className="text-sm font-medium text-blue-800">Demo Mode - Code Generated</h3>
+                  <h3 className="text-sm font-medium text-blue-800">Verification Code Sent</h3>
                   <p className="text-xs text-blue-700 mt-1">
-                    For demo purposes, your code is: <strong className="font-mono text-lg">{demoOTP}</strong>
+                    A verification code has been sent to your {identifierType === 'email' ? 'email' : 'phone'}.
+                    {identifierType === 'phone' && (
+                      <span> Check your SMS messages.</span>
+                    )}
                   </p>
-                  <button
-                    onClick={copyOTPToClipboard}
-                    className="mt-2 flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-700"
-                  >
-                    <Copy className="h-3 w-3" />
-                    <span>Copy Code</span>
-                  </button>
+                  {/* For demo purposes only - in production this would not be shown */}
+                  <div className="mt-2 p-2 bg-yellow-100 rounded-md">
+                    <p className="text-xs font-medium text-yellow-800">Demo Mode: Your code is <strong className="font-mono text-lg">{demoOTP}</strong></p>
+                    <button
+                      onClick={copyOTPToClipboard}
+                      className="mt-1 flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-700"
+                    >
+                      <Copy className="h-3 w-3" />
+                      <span>Copy Code</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -687,7 +704,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
                 />
                 <div className="flex items-center justify-between mt-2">
                   <p className="text-sm text-gray-600">
-                    Enter the 6-digit code sent to your {identifierType}
+                    Enter the 6-digit code sent to your {identifierType === 'email' ? 'email' : 'phone'}
                   </p>
                   {otpTimer > 0 ? (
                     <span className="text-sm text-blue-600">Resend in {otpTimer}s</span>
