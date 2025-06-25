@@ -109,22 +109,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
       <header className="bg-white/10 backdrop-blur-sm border-b border-white/20 px-6 py-4 sticky top-0 z-10">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center space-x-3">
-            <Logo size="md" />
+            <Logo size="lg" />
             <div>
               <h1 className="text-2xl font-bold text-white">Excel Pro AI</h1>
               <p className="text-sm text-slate-300">Advanced spreadsheet analysis with AI-powered insights</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2 text-sm text-cyan-400">
-              <Shield className="h-4 w-4" />
-              <span className="font-medium">100% Private & Secure</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Star key={star} className="h-4 w-4 text-yellow-400 fill-current" />
-              ))}
-              <span className="text-sm text-slate-300 ml-1">4.9/5 (1,200+ reviews)</span>
             </div>
           </div>
         </div>
@@ -137,7 +125,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
           <div className="text-center mb-16">
             <div className="mb-8">
               <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full mb-6 shadow-2xl">
-                <Logo size="lg" showBackground={false} />
+                <Logo size="xl" showBackground={false} />
               </div>
               <h2 className="text-5xl font-bold text-white mb-6 leading-tight">
                 Create & Analyze Spreadsheets with
@@ -188,98 +176,78 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
               </div>
             </div>
 
-            {/* Trust Indicators */}
-            <div className="flex flex-wrap justify-center items-center gap-8 mb-16 mt-8">
-              <div className="flex items-center space-x-2 text-cyan-400">
-                <Shield className="h-5 w-5" />
-                <span className="font-medium">Privacy First</span>
+            {/* How It Works - Uniform Size Cards */}
+            <div className="mb-16 mt-16">
+              <div className="text-center mb-12">
+                <h3 className="text-4xl font-bold text-white mb-4">How It Works</h3>
+                <p className="text-xl text-slate-300 max-w-2xl mx-auto">
+                  Get from idea to insights in just three simple steps
+                </p>
               </div>
-              <div className="flex items-center space-x-2 text-blue-400">
-                <Users className="h-5 w-5" />
-                <span className="font-medium">10,000+ Users</span>
-              </div>
-              <div className="flex items-center space-x-2 text-purple-400">
-                <Zap className="h-5 w-5" />
-                <span className="font-medium">AI Powered</span>
-              </div>
-              <div className="flex items-center space-x-2 text-orange-400">
-                <Target className="h-5 w-5" />
-                <span className="font-medium">200+ Functions</span>
-              </div>
-            </div>
-          </div>
-
-          {/* How It Works - Uniform Size Cards */}
-          <div className="mb-16">
-            <div className="text-center mb-12">
-              <h3 className="text-4xl font-bold text-white mb-4">How It Works</h3>
-              <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-                Get from idea to insights in just three simple steps
-              </p>
-            </div>
-            
-            <div className="relative">
-              {/* Connection Lines */}
-              <div className="hidden lg:block absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-400/30 via-blue-400/30 to-purple-400/30 transform -translate-y-1/2"></div>
               
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-                {steps.map((step, index) => {
-                  const IconComponent = step.icon;
-                  return (
-                    <div key={index} className="relative group">
-                      {/* Step Card - Fixed Height */}
-                      <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 hover:border-white/30 transition-all duration-300 hover:shadow-2xl transform hover:-translate-y-2 h-[400px] flex flex-col">
-                        {/* Step Number & Icon */}
-                        <div className="relative mb-6">
-                          <div className={`w-20 h-20 bg-gradient-to-r ${step.color} rounded-full flex items-center justify-center mx-auto shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                            <IconComponent className="h-10 w-10 text-white" />
+              <div className="relative">
+                {/* Connection Lines */}
+                <div className="hidden lg:block absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-400/30 via-blue-400/30 to-purple-400/30 transform -translate-y-1/2"></div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+                  {steps.map((step, index) => {
+                    const IconComponent = step.icon;
+                    return (
+                      <div key={index} className="relative group">
+                        {/* Step Card - Fixed Height */}
+                        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 hover:border-white/30 transition-all duration-300 hover:shadow-2xl transform hover:-translate-y-2 h-[400px] flex flex-col">
+                          {/* Step Number & Icon */}
+                          <div className="relative mb-6">
+                            <div className={`w-20 h-20 bg-gradient-to-r ${step.color} rounded-full flex items-center justify-center mx-auto shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                              <IconComponent className="h-10 w-10 text-white" />
+                            </div>
+                            <div className="absolute -top-2 -right-2 w-8 h-8 bg-white border-2 border-cyan-500 rounded-full flex items-center justify-center text-sm font-bold text-cyan-600">
+                              {step.number}
+                            </div>
                           </div>
-                          <div className="absolute -top-2 -right-2 w-8 h-8 bg-white border-2 border-cyan-500 rounded-full flex items-center justify-center text-sm font-bold text-cyan-600">
-                            {step.number}
+                          
+                          {/* Content - Flex Grow */}
+                          <div className="text-center flex-1 flex flex-col">
+                            <h4 className="text-2xl font-bold text-white mb-3">{step.title}</h4>
+                            <p className="text-slate-300 text-lg mb-4 leading-relaxed flex-1">{step.description}</p>
+                            <p className="text-slate-400 text-sm leading-relaxed">{step.details}</p>
+                          </div>
+                          
+                          {/* Visual Enhancement */}
+                          <div className="mt-6 flex justify-center">
+                            <div className="w-12 h-1 bg-gradient-to-r from-cyan-400 to-blue-400 rounded-full"></div>
                           </div>
                         </div>
                         
-                        {/* Content - Flex Grow */}
-                        <div className="text-center flex-1 flex flex-col">
-                          <h4 className="text-2xl font-bold text-white mb-3">{step.title}</h4>
-                          <p className="text-slate-300 text-lg mb-4 leading-relaxed flex-1">{step.description}</p>
-                          <p className="text-slate-400 text-sm leading-relaxed">{step.details}</p>
-                        </div>
-                        
-                        {/* Visual Enhancement */}
-                        <div className="mt-6 flex justify-center">
-                          <div className="w-12 h-1 bg-gradient-to-r from-cyan-400 to-blue-400 rounded-full"></div>
-                        </div>
+                        {/* Arrow for larger screens */}
+                        {index < steps.length - 1 && (
+                          <div className="hidden lg:block absolute top-1/2 -right-6 transform -translate-y-1/2 z-10">
+                            <ArrowRight className="h-8 w-8 text-cyan-400/60" />
+                          </div>
+                        )}
                       </div>
-                      
-                      {/* Arrow for larger screens */}
-                      {index < steps.length - 1 && (
-                        <div className="hidden lg:block absolute top-1/2 -right-6 transform -translate-y-1/2 z-10">
-                          <ArrowRight className="h-8 w-8 text-cyan-400/60" />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-            
-            {/* Additional Info */}
-            <div className="mt-12 text-center">
-              <div className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-xl p-6 border border-cyan-400/30 max-w-4xl mx-auto">
-                <h4 className="text-xl font-semibold text-white mb-3">Why Choose Excel Pro AI?</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-                  <div className="flex items-center space-x-2 justify-center">
-                    <CheckCircle className="h-5 w-5 text-cyan-400 flex-shrink-0" />
-                    <span className="text-slate-300">No technical expertise required</span>
-                  </div>
-                  <div className="flex items-center space-x-2 justify-center">
-                    <CheckCircle className="h-5 w-5 text-cyan-400 flex-shrink-0" />
-                    <span className="text-slate-300">Instant results in seconds</span>
-                  </div>
-                  <div className="flex items-center space-x-2 justify-center">
-                    <CheckCircle className="h-5 w-5 text-cyan-400 flex-shrink-0" />
-                    <span className="text-slate-300">100% privacy guaranteed</span>
+              
+              {/* Additional Info */}
+              <div className="mt-12 text-center">
+                <div className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-xl p-6 border border-cyan-400/30 max-w-4xl mx-auto">
+                  <h4 className="text-xl font-semibold text-white mb-3">Why Choose Excel Pro AI?</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+                    <div className="flex items-center space-x-2 justify-center">
+                      <CheckCircle className="h-5 w-5 text-cyan-400 flex-shrink-0" />
+                      <span className="text-slate-300">No technical expertise required</span>
+                    </div>
+                    <div className="flex items-center space-x-2 justify-center">
+                      <CheckCircle className="h-5 w-5 text-cyan-400 flex-shrink-0" />
+                      <span className="text-slate-300">Instant results in seconds</span>
+                    </div>
+                    <div className="flex items-center space-x-2 justify-center">
+                      <CheckCircle className="h-5 w-5 text-cyan-400 flex-shrink-0" />
+                      <span className="text-slate-300">100% privacy guaranteed</span>
+                    </div>
                   </div>
                 </div>
               </div>

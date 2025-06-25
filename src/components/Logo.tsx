@@ -12,17 +12,17 @@ export const Logo: React.FC<LogoProps> = ({
   className = '' 
 }) => {
   const sizeClasses = {
-    sm: 'h-6 w-6',
-    md: 'h-8 w-8',
-    lg: 'h-10 w-10',
-    xl: 'h-12 w-12'
+    sm: 'h-8 w-8',
+    md: 'h-12 w-12',
+    lg: 'h-16 w-16',
+    xl: 'h-20 w-20'
   };
 
   const backgroundSizeClasses = {
-    sm: 'h-8 w-8',
-    md: 'h-10 w-10',
-    lg: 'h-12 w-12',
-    xl: 'h-14 w-14'
+    sm: 'h-10 w-10',
+    md: 'h-14 w-14',
+    lg: 'h-18 w-18',
+    xl: 'h-22 w-22'
   };
 
   const logoElement = (
@@ -30,6 +30,7 @@ export const Logo: React.FC<LogoProps> = ({
       src="/Tech Company Logo Excel Pro AI, Blue and Silver.png" 
       alt="Excel Pro AI" 
       className={`${sizeClasses[size]} object-contain`}
+      style={{ imageRendering: 'crisp-edges' }}
     />
   );
 

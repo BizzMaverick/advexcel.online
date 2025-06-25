@@ -947,7 +947,7 @@ function App() {
               title="Click to refresh and start new analysis"
             >
               <div className="relative">
-                <Logo size="md" />
+                <Logo size="lg" />
                 <RotateCcw className="h-3 w-3 text-cyan-500 absolute -top-1 -right-1" />
               </div>
               <div>
