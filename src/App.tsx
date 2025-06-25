@@ -42,7 +42,6 @@ import { AuthGuard } from './components/AuthGuard';
 function App() {
   // Authentication state from context
   const { user, isAuthenticated, logout } = useAuthContext();
-  const [showAuthModal, setShowAuthModal] = useState(!isAuthenticated);
   
   // Subscription state
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
@@ -86,9 +85,6 @@ function App() {
 
   // Check authentication status on app load
   useEffect(() => {
-    // Show auth modal if not authenticated
-    setShowAuthModal(!isAuthenticated);
-    
     // If authenticated, show welcome screen
     if (isAuthenticated) {
       setShowWelcomeScreen(true);
@@ -129,7 +125,6 @@ function App() {
   };
 
   const handleAuthSuccess = (userData: User) => {
-    setShowAuthModal(false);
     setShowWelcomeScreen(true);
     addNotification(`Welcome ${userData.email || userData.phoneNumber}!`, 'success');
   };
@@ -140,7 +135,6 @@ function App() {
     setSpreadsheetData({ cells: {}, selectedCell: undefined, selectedRange: [] });
     setIsDataLoaded(false);
     setShowWelcomeScreen(false);
-    setShowAuthModal(true);
     addNotification('Please sign in to continue', 'info');
   };
 
@@ -152,7 +146,6 @@ function App() {
   const checkFeatureAccess = (): boolean => {
     if (!isAuthenticated) {
       addNotification('Please log in to access this feature.', 'error');
-      setShowAuthModal(true);
       return false;
     }
     return true;
@@ -782,80 +775,14 @@ function App() {
     'Clear range B1:B10',
   ];
 
-  // Show authentication modal if not logged in
-  if (!isAuthenticated) {
+  // Show welcome screen if not authenticated or no data is loaded
+  if (!isAuthenticated || (showWelcomeScreen && !isDataLoaded)) {
     return (
-      <>
-        <AuthModal
-          isVisible={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          onAuthSuccess={handleAuthSuccess}
-        />
-        {!showAuthModal && (
-          <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex items-center justify-center">
-            <div className="text-center">
-              <div className="mb-6">
-                <Logo size="xl" className="mx-auto mb-4" />
-              </div>
-              <h1 className="text-3xl font-bold text-white mb-4">Excel Pro AI</h1>
-              <p className="text-slate-300 mb-6">Advanced spreadsheet analysis with AI-powered insights</p>
-              <button
-                onClick={() => setShowAuthModal(true)}
-                className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-6 py-3 rounded-lg hover:from-cyan-600 hover:to-blue-700 transition-all duration-300 shadow-lg"
-              >
-                Get Started
-              </button>
-            </div>
-          </div>
-        )}
-      </>
-    );
-  }
-
-  // Show welcome screen if no data is loaded
-  if (showWelcomeScreen && !isDataLoaded) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <WelcomeScreen 
-          onImportFile={handleImportFile} 
-          onCreateNewSheet={() => setShowSheetCreator(true)}
-          isLoading={isLoading} 
-        />
-        <Footer 
-          onReferralClick={() => setShowReferralPanel(true)}
-          onRatingClick={() => setShowRatingModal(true)}
-        />
-        
-        <SheetCreator
-          isVisible={showSheetCreator}
-          onClose={() => setShowSheetCreator(false)}
-          onCreateSheet={handleCreateNewSheet}
-        />
-        
-        <ReferralPanel
-          isVisible={showReferralPanel}
-          onClose={() => setShowReferralPanel(false)}
-          userId={user.id}
-        />
-
-        <RatingModal
-          isVisible={showRatingModal}
-          onClose={() => setShowRatingModal(false)}
-          onSubmitRating={handleRatingSubmit}
-        />
-
-        <LoadingProgress
-          isVisible={showLoadingProgress}
-          progress={loadingProgress}
-          message={loadingMessage}
-          fileName={loadingFileName}
-          onCancel={() => {
-            setShowLoadingProgress(false);
-            setIsLoading(false);
-            setLoadingProgress(0);
-          }}
-        />
-      </div>
+      <WelcomeScreen 
+        onImportFile={handleImportFile} 
+        onCreateNewSheet={() => setShowSheetCreator(true)}
+        isLoading={isLoading} 
+      />
     );
   }
 
@@ -1148,13 +1075,6 @@ function App() {
           </div>
         ))}
       </div>
-
-      {/* Auth Modal */}
-      <AuthModal
-        isVisible={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onAuthSuccess={handleAuthSuccess}
-      />
     </div>
   );
 }
