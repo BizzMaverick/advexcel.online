@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Upload, Zap, Shield, Star, Users, CheckCircle, ArrowRight, Play, HelpCircle, Target, Award, Plus, Mail, Phone, Lock, Eye, EyeOff, Gift } from 'lucide-react';
 import { Logo } from './Logo';
 import { useAuthContext } from '../context/AuthContext';
@@ -202,9 +202,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col md:flex-row items-center justify-center p-6">
+      <div className="flex-1 flex flex-col md:flex-row items-start justify-center p-6">
         {/* Left Side - Features */}
-        <div className="w-full md:w-1/2 max-w-2xl mb-10 md:mb-0 md:pr-8">
+        <div className="w-full md:w-1/2 max-w-2xl mb-10 md:mb-0 md:pr-8 self-start">
           <div className="text-center md:text-left mb-8">
             <h2 className="text-4xl font-bold text-white mb-6 leading-tight">
               Create & Analyze Spreadsheets with
@@ -263,7 +263,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
         </div>
 
         {/* Right Side - Auth Form */}
-        <div className="w-full md:w-1/2 max-w-md">
+        <div className="w-full md:w-1/2 max-w-md self-start">
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 shadow-xl">
             <div className="text-center mb-6">
               <h3 className="text-2xl font-bold text-white mb-2">
