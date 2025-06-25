@@ -12,7 +12,6 @@ export class ExcelFileHandler {
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
           
-          // Get the first worksheet
           const firstSheetName = workbook.SheetNames[0];
           if (!firstSheetName) {
             throw new Error('No worksheets found in the file');
@@ -23,7 +22,6 @@ export class ExcelFileHandler {
             throw new Error('Unable to read worksheet data');
           }
           
-          // Convert to JSON format
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
             header: 1,
             defval: '',
@@ -32,7 +30,6 @@ export class ExcelFileHandler {
           
           const cells: { [key: string]: Cell } = {};
           
-          // Process each row and column
           jsonData.forEach((row, rowIndex) => {
             if (Array.isArray(row)) {
               row.forEach((cellValue, colIndex) => {
@@ -76,7 +73,6 @@ export class ExcelFileHandler {
         throw new Error('No data to export');
       }
       
-      // Find data boundaries
       const cellEntries = Object.entries(cells);
       const rows = new Set<number>();
       const cols = new Set<number>();
@@ -93,7 +89,6 @@ export class ExcelFileHandler {
       const maxRow = Math.max(...rows);
       const maxCol = Math.max(...cols);
       
-      // Create worksheet data
       const wsData: any[][] = [];
       for (let row = 1; row <= maxRow; row++) {
         const rowData: any[] = [];
@@ -105,11 +100,10 @@ export class ExcelFileHandler {
         wsData.push(rowData);
       }
       
-      // Create workbook and worksheet
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet(wsData);
       
-      // Add formatting for numeric cells
+      // Apply formatting
       const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
       for (let row = range.s.r; row <= range.e.r; row++) {
         for (let col = range.s.c; col <= range.e.c; col++) {
@@ -118,7 +112,6 @@ export class ExcelFileHandler {
           const cell = cells[cellId];
           
           if (cell && ws[cellAddress]) {
-            // Apply cell formatting based on type
             if (cell.type === 'number') {
               ws[cellAddress].t = 'n';
               ws[cellAddress].v = Number(cell.value);
@@ -126,7 +119,6 @@ export class ExcelFileHandler {
               ws[cellAddress].f = cell.formula?.startsWith('=') ? cell.formula.slice(1) : cell.formula;
             }
             
-            // Apply visual formatting if available
             if (cell.format) {
               if (!ws[cellAddress].s) ws[cellAddress].s = {};
               
@@ -148,21 +140,9 @@ export class ExcelFileHandler {
         }
       }
       
-      // Handle different export modes
       const sheetName = options?.sheetName || 'Sheet1';
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
       
-      if (options?.mode === 'new_sheet') {
-        // Add as new sheet to existing workbook (simulated)
-        XLSX.utils.book_append_sheet(wb, ws, sheetName);
-      } else if (options?.mode === 'replace_sheet') {
-        // Replace existing sheet (simulated)
-        XLSX.utils.book_append_sheet(wb, ws, sheetName);
-      } else {
-        // Default: new file
-        XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-      }
-      
-      // Set workbook properties
       wb.Props = {
         Title: 'Excel Analyzer Pro Export',
         Subject: 'Spreadsheet Data Export',
@@ -170,14 +150,12 @@ export class ExcelFileHandler {
         CreatedDate: new Date()
       };
       
-      // Determine file format based on extension
       const writeOpts: XLSX.WritingOptions = {
         bookType: filename.endsWith('.xls') ? 'xls' : 
                   filename.endsWith('.ods') ? 'ods' : 'xlsx',
         type: 'array'
       };
       
-      // Save file
       XLSX.writeFile(wb, filename, writeOpts);
     } catch (error) {
       console.error('Export error:', error);

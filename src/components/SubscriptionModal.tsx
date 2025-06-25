@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { X, Crown, Check, Star, Shield, CreditCard, Smartphone, Wallet, Building, Clock, AlertCircle, CheckCircle, Zap, Gift, TrendingUp } from 'lucide-react';
-import { SubscriptionPlan, PaymentDetails, TrialInfo } from '../types/subscription';
-import { SubscriptionService } from '../utils/subscriptionService';
 
 interface SubscriptionModalProps {
   isVisible: boolean;
@@ -10,70 +8,92 @@ interface SubscriptionModalProps {
   onSubscriptionSuccess: () => void;
 }
 
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  price: number;
+  currency: string;
+  duration: 'daily' | 'monthly' | 'yearly';
+  features: string[];
+  isPopular?: boolean;
+  discount?: {
+    originalPrice: number;
+    percentage: number;
+  };
+}
+
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   isVisible,
   onClose,
   userId,
   onSubscriptionSuccess
 }) => {
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<string>('monthly');
   const [showPayment, setShowPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'upi' | 'card' | 'netbanking' | 'wallet'>('upi');
-  const [paymentGateway, setPaymentGateway] = useState<'razorpay' | 'payu' | 'ccavenue'>('razorpay');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null);
-  const [trialInfo, setTrialInfo] = useState<TrialInfo | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  useEffect(() => {
-    if (isVisible) {
-      setPlans(SubscriptionService.getSubscriptionPlans());
-      setTrialInfo(SubscriptionService.getUserTrial(userId));
+  const plans: SubscriptionPlan[] = [
+    {
+      id: 'daily',
+      name: 'Daily Plan',
+      price: 49,
+      currency: 'INR',
+      duration: 'daily',
+      features: [
+        'Full access to all features',
+        'Unlimited file imports',
+        'Advanced analytics',
+        'Natural language queries',
+        'Export in all formats',
+        'Priority support'
+      ]
+    },
+    {
+      id: 'monthly',
+      name: 'Monthly Plan',
+      price: 1199,
+      currency: 'INR',
+      duration: 'monthly',
+      isPopular: true,
+      discount: {
+        originalPrice: 1470,
+        percentage: 18
+      },
+      features: [
+        'Everything in Daily Plan',
+        'Save up to 18% vs daily',
+        'Monthly billing convenience',
+        'Advanced pivot tables',
+        'Custom formulas',
+        'Data visualization tools',
+        'Premium templates'
+      ]
+    },
+    {
+      id: 'yearly',
+      name: 'Yearly Plan',
+      price: 12999,
+      currency: 'INR',
+      duration: 'yearly',
+      discount: {
+        originalPrice: 17885,
+        percentage: 27
+      },
+      features: [
+        'Everything in Monthly Plan',
+        'Save up to 27% vs daily',
+        'Best value for money',
+        'Priority feature requests',
+        'Dedicated account manager',
+        'Advanced integrations',
+        'Custom training sessions',
+        'Early access to new features'
+      ]
     }
-  }, [isVisible, userId]);
-
-  const handlePlanSelect = async (planId: string) => {
-    setSelectedPlan(planId);
-    setError('');
-    
-    try {
-      const details = await SubscriptionService.initiatePayment(planId, userId);
-      setPaymentDetails(details);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to initiate payment');
-    }
-  };
-
-  const handlePayment = async () => {
-    if (!paymentDetails) return;
-    
-    setIsProcessing(true);
-    setError('');
-    
-    try {
-      // In production, this would integrate with the selected payment gateway
-      const result = await SubscriptionService.processPayment(
-        { ...paymentDetails, paymentMethod, paymentGateway },
-        userId
-      );
-      
-      if (result.success) {
-        setSuccess(result.message);
-        setTimeout(() => {
-          onSubscriptionSuccess();
-          onClose();
-        }, 2000);
-      } else {
-        setError(result.message);
-      }
-    } catch (error) {
-      setError('Payment processing failed. Please try again.');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  ];
 
   const paymentMethods = [
     { 
@@ -110,29 +130,41 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
     }
   ];
 
-  const paymentGateways = [
-    {
-      id: 'razorpay',
-      name: 'Razorpay',
-      description: 'Most popular payment gateway in India',
-      processingFee: '2.5%',
-      logo: '🔷'
-    },
-    {
-      id: 'payu',
-      name: 'PayU',
-      description: 'Trusted by millions of users',
-      processingFee: '2.3%',
-      logo: '💳'
-    },
-    {
-      id: 'ccavenue',
-      name: 'CCAvenue',
-      description: 'Secure payment processing',
-      processingFee: '2.8%',
-      logo: '🔒'
-    }
-  ];
+  const handlePlanSelect = (planId: string) => {
+    setSelectedPlan(planId);
+    setError('');
+  };
+
+  const handlePayment = () => {
+    setIsProcessing(true);
+    setError('');
+    
+    // Simulate payment processing
+    setTimeout(() => {
+      setIsProcessing(false);
+      setSuccess('Payment successful! Your subscription is now active.');
+      
+      // Notify parent component
+      setTimeout(() => {
+        onSubscriptionSuccess();
+        onClose();
+      }, 2000);
+    }, 3000);
+  };
+
+  const formatPrice = (amount: number): string => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const calculateSavings = (plan: SubscriptionPlan): string => {
+    if (!plan.discount) return '';
+    const savings = plan.discount.originalPrice - plan.price;
+    return formatPrice(savings);
+  };
 
   if (!isVisible) return null;
 
@@ -157,30 +189,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
         </div>
 
         <div className="p-6">
-          {/* Trial Info */}
-          {trialInfo && (
-            <div className={`mb-6 p-4 rounded-lg border ${
-              trialInfo.isTrialActive 
-                ? 'bg-green-50 border-green-200' 
-                : 'bg-red-50 border-red-200'
-            }`}>
-              <div className="flex items-center space-x-3">
-                <Clock className={`h-5 w-5 ${trialInfo.isTrialActive ? 'text-green-600' : 'text-red-600'}`} />
-                <div>
-                  <h3 className={`font-medium ${trialInfo.isTrialActive ? 'text-green-800' : 'text-red-800'}`}>
-                    {trialInfo.isTrialActive ? 'Free Trial Active' : 'Free Trial Expired'}
-                  </h3>
-                  <p className={`text-sm ${trialInfo.isTrialActive ? 'text-green-700' : 'text-red-700'}`}>
-                    {trialInfo.isTrialActive 
-                      ? `${trialInfo.daysRemaining} day${trialInfo.daysRemaining !== 1 ? 's' : ''} remaining`
-                      : 'Subscribe now to continue using all features'
-                    }
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {!showPayment ? (
             /* Plan Selection */
             <div className="space-y-6">
@@ -229,7 +237,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                       <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h3>
                       <div className="mb-2">
                         <span className="text-3xl font-bold text-gray-900">
-                          {SubscriptionService.formatPrice(plan.price)}
+                          {formatPrice(plan.price)}
                         </span>
                         <span className="text-gray-600">/{plan.duration === 'daily' ? 'day' : plan.duration === 'monthly' ? 'month' : 'year'}</span>
                       </div>
@@ -238,10 +246,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                         <div className="text-sm space-y-1">
                           <div>
                             <span className="text-gray-500 line-through">
-                              {SubscriptionService.formatPrice(plan.discount.originalPrice)}
+                              {formatPrice(plan.discount.originalPrice)}
                             </span>
                             <span className="ml-2 text-green-600 font-medium">
-                              Save {SubscriptionService.calculateSavings(plan)}
+                              Save {calculateSavings(plan)}
                             </span>
                           </div>
                           <div className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
@@ -315,8 +323,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               <div className="text-center">
                 <button
                   onClick={() => setShowPayment(true)}
-                  disabled={!selectedPlan || !paymentDetails}
-                  className="bg-blue-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2 mx-auto"
+                  className="bg-blue-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2 mx-auto"
                 >
                   <Zap className="h-5 w-5" />
                   <span>Continue to Payment</span>
@@ -346,67 +353,33 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                   <Crown className="h-5 w-5 text-yellow-500" />
                   <span>Order Summary</span>
                 </h3>
-                {paymentDetails && (
-                  <div className="space-y-3">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Plan:</span>
+                    <span className="font-medium text-lg">
+                      {plans.find(p => p.id === selectedPlan)?.name}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Amount:</span>
+                    <span className="font-bold text-2xl text-green-600">
+                      {formatPrice(plans.find(p => p.id === selectedPlan)?.price || 0)}
+                    </span>
+                  </div>
+                  {plans.find(p => p.id === selectedPlan)?.discount && (
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Plan:</span>
-                      <span className="font-medium text-lg">
-                        {plans.find(p => p.id === paymentDetails.planId)?.name}
+                      <span className="text-gray-600">You Save:</span>
+                      <span className="font-medium text-green-600">
+                        {calculateSavings(plans.find(p => p.id === selectedPlan)!)}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Amount:</span>
-                      <span className="font-bold text-2xl text-green-600">
-                        {SubscriptionService.formatPrice(paymentDetails.amount)}
-                      </span>
-                    </div>
-                    {plans.find(p => p.id === paymentDetails.planId)?.discount && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">You Save:</span>
-                        <span className="font-medium text-green-600">
-                          {SubscriptionService.calculateSavings(plans.find(p => p.id === paymentDetails.planId)!)}
-                        </span>
-                      </div>
-                    )}
-                    <div className="border-t pt-2">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-600">Order ID:</span>
-                        <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">{paymentDetails.orderId}</span>
-                      </div>
+                  )}
+                  <div className="border-t pt-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">Order ID:</span>
+                      <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">ORDER_{Date.now()}</span>
                     </div>
                   </div>
-                )}
-              </div>
-
-              {/* Payment Gateway Selection */}
-              <div>
-                <h3 className="font-medium text-gray-900 mb-4">Select Payment Gateway</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  {paymentGateways.map((gateway) => (
-                    <label
-                      key={gateway.id}
-                      className={`flex items-center space-x-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                        paymentGateway === gateway.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="paymentGateway"
-                        value={gateway.id}
-                        checked={paymentGateway === gateway.id}
-                        onChange={(e) => setPaymentGateway(e.target.value as any)}
-                        className="text-blue-600 focus:ring-blue-500"
-                      />
-                      <div className="text-2xl">{gateway.logo}</div>
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900">{gateway.name}</div>
-                        <div className="text-xs text-gray-600">{gateway.description}</div>
-                        <div className="text-xs text-green-600">Fee: {gateway.processingFee}</div>
-                      </div>
-                    </label>
-                  ))}
                 </div>
               </div>
 
@@ -488,7 +461,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                   ) : (
                     <>
                       <CreditCard className="h-5 w-5" />
-                      <span>Pay {paymentDetails ? SubscriptionService.formatPrice(paymentDetails.amount) : ''}</span>
+                      <span>Pay {formatPrice(plans.find(p => p.id === selectedPlan)?.price || 0)}</span>
                     </>
                   )}
                 </button>

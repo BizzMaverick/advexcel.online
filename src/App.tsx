@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { FileSpreadsheet, Download, Upload, Save, RotateCcw, BarChart3, TrendingUp, Search, RefreshCw, Table, MessageCircle, Star, LogOut, Shield, X, Crown, Gift, Users, Calculator } from 'lucide-react';
+import { FileSpreadsheet, Upload, RotateCcw, MessageCircle, Star, LogOut, Shield, X, Crown, Gift, Users, Calculator, Search } from 'lucide-react';
 import Papa from 'papaparse';
 import { SpreadsheetGrid } from './components/SpreadsheetGrid';
 import { CommandBar } from './components/CommandBar';
@@ -31,12 +31,9 @@ import { CommandProcessor } from './utils/commandProcessor';
 import { ExcelCommandProcessor } from './utils/excelCommandProcessor';
 import { ExcelFileHandler } from './utils/excelFileHandler';
 import { LargeFileHandler } from './utils/largeFileHandler';
-import { PerformanceOptimizer } from './utils/performanceOptimizer';
 import { NaturalLanguageProcessor, QueryResult } from './utils/naturalLanguageProcessor';
 import { DocumentConverter } from './utils/documentConverter';
 import { MultiSheetHandler } from './utils/multiSheetHandler';
-import { SubscriptionService } from './utils/subscriptionService';
-import { ReferralService } from './utils/referralService';
 
 function App() {
   // Authentication state
@@ -46,19 +43,16 @@ function App() {
   // Subscription state
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [trialInfo, setTrialInfo] = useState<TrialInfo | null>(null);
-  const [isSubscribed, setIsSubscribed] = useState(true); // Default to subscribed for demo
+  const [isSubscribed, setIsSubscribed] = useState(true);
   
-  // Referral state
+  // UI state
   const [showReferralPanel, setShowReferralPanel] = useState(false);
-  
-  // Legal modals state
   const [activeLegalModal, setActiveLegalModal] = useState<'terms' | 'privacy' | 'cookies' | 'refunds' | null>(null);
-  
-  // Formula Assistant state
   const [showFormulaAssistant, setShowFormulaAssistant] = useState(false);
-  
-  // Sheet Creator state
   const [showSheetCreator, setShowSheetCreator] = useState(false);
+  const [showChatBot, setShowChatBot] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [showPrivacyBanner, setShowPrivacyBanner] = useState(true);
   
   // Loading state
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -74,31 +68,27 @@ function App() {
     selectedRange: [],
   });
 
+  // Panel states
   const [notifications, setNotifications] = useState<Array<{ id: number; message: string; type: 'success' | 'error' | 'info' }>>([]);
   const [showAnalyticsPanel, setShowAnalyticsPanel] = useState(false);
   const [showQueryResults, setShowQueryResults] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showPivotPanel, setShowPivotPanel] = useState(false);
-  const [showChatBot, setShowChatBot] = useState(false);
-  const [showRatingModal, setShowRatingModal] = useState(false);
   const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(true);
   const [suggestions, setSuggestions] = useState<SuggestionFeedback[]>([]);
-  const [showPrivacyBanner, setShowPrivacyBanner] = useState(true);
 
   // Initialize demo user on app load
   useEffect(() => {
     try {
-      // Check for existing user or create demo user
       const savedUser = localStorage.getItem('excelAnalyzerUser');
       if (savedUser) {
         const userData = JSON.parse(savedUser);
         setUser(userData);
         setShowWelcomeScreen(true);
       } else {
-        // Create demo user for production
         const demoUser: User = {
           id: 'demo_user_' + Date.now(),
           email: 'user@advexcel.online',
@@ -111,18 +101,9 @@ function App() {
         localStorage.setItem('excelAnalyzerUser', JSON.stringify(demoUser));
       }
 
-      // Check if privacy banner was dismissed
       const bannerDismissed = localStorage.getItem('privacyBannerDismissed');
       if (bannerDismissed) {
         setShowPrivacyBanner(false);
-      }
-
-      // Force HTTPS redirect if on HTTP (only in production)
-      if (window.location.protocol === 'http:' && 
-          window.location.hostname !== 'localhost' && 
-          window.location.hostname !== '127.0.0.1' &&
-          !window.location.hostname.includes('local')) {
-        window.location.href = window.location.href.replace('http:', 'https:');
       }
 
       // Handle legal modal links from footer
@@ -134,14 +115,13 @@ function App() {
       };
 
       window.addEventListener('hashchange', handleHashChange);
-      handleHashChange(); // Check initial hash
+      handleHashChange();
 
       return () => {
         window.removeEventListener('hashchange', handleHashChange);
       };
     } catch (error) {
       console.error('Error initializing app:', error);
-      // Fallback to demo user
       const demoUser: User = {
         id: 'demo_user_fallback',
         email: 'user@advexcel.online',
@@ -194,19 +174,12 @@ function App() {
       setShowAuthModal(true);
       return false;
     }
-    
-    // For demo, always allow access
     return true;
   };
 
   const handleLogoClick = () => {
-    // Reset all state to initial values
     setWorkbook(null);
-    setSpreadsheetData({
-      cells: {},
-      selectedCell: undefined,
-      selectedRange: [],
-    });
+    setSpreadsheetData({ cells: {}, selectedCell: undefined, selectedRange: [] });
     setShowAnalyticsPanel(false);
     setShowQueryResults(false);
     setShowExportModal(false);
@@ -238,12 +211,8 @@ function App() {
         type: formula ? 'formula' : (isNaN(Number(value)) ? 'text' : 'number'),
       };
 
-      const newCells = {
-        ...prev.cells,
-        [cellId]: newCell,
-      };
+      const newCells = { ...prev.cells, [cellId]: newCell };
 
-      // Update workbook if it exists
       if (workbook) {
         const updatedWorkbook = MultiSheetHandler.updateWorksheetCells(
           workbook,
@@ -253,10 +222,7 @@ function App() {
         setWorkbook(updatedWorkbook);
       }
 
-      return {
-        ...prev,
-        cells: newCells,
-      };
+      return { ...prev, cells: newCells };
     });
   }, [workbook, user]);
 
@@ -274,26 +240,20 @@ function App() {
 
       return {
         ...prev,
-        cells: {
-          ...prev.cells,
-          [cellId]: updatedCell
-        }
+        cells: { ...prev.cells, [cellId]: updatedCell }
       };
     });
   }, [user]);
 
   const handleCellSelect = useCallback((cellId: string) => {
-    setSpreadsheetData(prev => ({
-      ...prev,
-      selectedCell: cellId,
-    }));
+    setSpreadsheetData(prev => ({ ...prev, selectedCell: cellId }));
   }, []);
 
   const handleExecuteCommand = useCallback((command: string) => {
     if (!checkFeatureAccess()) return;
     
     try {
-      // Check if command is for formula assistant
+      // Check for formula assistant commands
       const formulaCommands = ['formula assistant', 'formula helper', 'excel function help', 'open formula assistant', 'show formula helper'];
       if (formulaCommands.some(cmd => command.toLowerCase().includes(cmd))) {
         setShowFormulaAssistant(true);
@@ -301,7 +261,7 @@ function App() {
         return;
       }
 
-      // Check if command is for creating new sheet
+      // Check for sheet creation commands
       const sheetCommands = ['create sheet', 'new sheet', 'add sheet', 'create new sheet'];
       if (sheetCommands.some(cmd => command.toLowerCase().includes(cmd))) {
         setShowSheetCreator(true);
@@ -314,7 +274,6 @@ function App() {
       const excelResult = excelProcessor.processCommand(command);
       
       if (excelResult.success) {
-        // Apply cell updates
         if (excelResult.cellUpdates) {
           setSpreadsheetData(prev => ({
             ...prev,
@@ -322,7 +281,6 @@ function App() {
           }));
         }
 
-        // Apply formatting
         if (excelResult.formatting) {
           excelResult.formatting.forEach(({ cellId, format }) => {
             handleCellFormat(cellId, format);
@@ -355,7 +313,6 @@ function App() {
       const isNaturalQuery = queryKeywords.some(keyword => processedCommand.toLowerCase().includes(keyword));
 
       if (isNaturalQuery && Object.keys(targetCells).length > 0) {
-        // Process as natural language query
         const nlProcessor = new NaturalLanguageProcessor(targetCells);
         const result = nlProcessor.processQuery(processedCommand);
         
@@ -377,7 +334,6 @@ function App() {
       if (result.success) {
         addNotification(result.message, 'success');
         
-        // Handle specific command results
         if (result.data) {
           switch (result.data.type) {
             case 'analytics':
@@ -387,27 +343,9 @@ function App() {
               setShowAnalyticsPanel(true);
               addNotification('Chart generated successfully', 'success');
               break;
-            case 'outliers':
-              addNotification(`Found ${result.data.outliers.reduce((sum: number, col: any) => sum + col.outliers.length, 0)} outliers`, 'info');
-              break;
-            case 'quality':
-              addNotification(`Data completeness: ${result.data.completenessRate.toFixed(1)}%`, 'info');
-              break;
-            case 'forecast':
-              addNotification(`Forecast generated for ${result.data.forecasts.length} columns`, 'success');
-              break;
-            case 'conditional_format':
-              addNotification('Conditional formatting applied successfully', 'success');
-              break;
-            case 'vlookup':
-              addNotification('VLOOKUP formula ready to apply', 'info');
-              break;
             case 'pivot':
               setShowPivotPanel(true);
               addNotification('Pivot table builder opened', 'success');
-              break;
-            case 'calculation':
-              addNotification(`Result: ${result.data.result}`, 'success');
               break;
           }
         }
@@ -452,10 +390,7 @@ function App() {
     };
 
     setWorkbook(newWorkbook);
-    setSpreadsheetData(prev => ({
-      ...prev,
-      cells: initialData || {},
-    }));
+    setSpreadsheetData(prev => ({ ...prev, cells: initialData || {} }));
     setIsDataLoaded(true);
     setShowWelcomeScreen(false);
     
@@ -472,15 +407,13 @@ function App() {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
 
-      // Check if file can be processed
       const canProcess = LargeFileHandler.canProcessFile(file);
       if (!canProcess.canProcess) {
         addNotification(canProcess.reason || 'Cannot process this file', 'error');
         return;
       }
 
-      // Show file info for large files
-      if (file.size > 10 * 1024 * 1024) { // 10MB
+      if (file.size > 10 * 1024 * 1024) {
         const fileInfo = LargeFileHandler.getFileInfo(file);
         addNotification(
           `Large file detected (${fileInfo.size}). Estimated processing time: ${fileInfo.processingTime}. The file will be optimized for performance.`, 
@@ -499,7 +432,6 @@ function App() {
         let newCells: { [key: string]: Cell } = {};
         
         if (DocumentConverter.isDocumentFile(file.name)) {
-          // Handle document conversion
           setLoadingMessage('Converting document...');
           let conversion;
           const extension = file.name.toLowerCase().split('.').pop();
@@ -521,7 +453,6 @@ function App() {
             throw new Error('Document conversion failed');
           }
         } else if (ExcelFileHandler.isExcelFile(file.name)) {
-          // Handle multi-sheet Excel files with progress tracking
           setLoadingMessage('Reading Excel file...');
           newWorkbook = await LargeFileHandler.readLargeExcelFile(file, (progress) => {
             setLoadingProgress(progress);
@@ -552,7 +483,6 @@ function App() {
           }
           
         } else if (ExcelFileHandler.isCSVFile(file.name)) {
-          // Handle CSV files with progress tracking
           setLoadingMessage('Reading CSV file...');
           newCells = await LargeFileHandler.readLargeCSVFile(file, (progress) => {
             setLoadingProgress(progress);
@@ -565,7 +495,6 @@ function App() {
             }
           });
           
-          // Create a simple workbook for CSV
           const cellEntries = Object.entries(newCells);
           const maxRow = cellEntries.length > 0 ? Math.max(...cellEntries.map(([_, cell]) => cell.row)) : 0;
           const maxCol = cellEntries.length > 0 ? Math.max(...cellEntries.map(([_, cell]) => cell.col)) : 0;
@@ -596,14 +525,10 @@ function App() {
         }
 
         setWorkbook(newWorkbook);
-        setSpreadsheetData(prev => ({
-          ...prev,
-          cells: newCells,
-        }));
+        setSpreadsheetData(prev => ({ ...prev, cells: newCells }));
         setIsDataLoaded(true);
         setShowWelcomeScreen(false);
         
-        // Small delay to show 100% progress
         setTimeout(() => {
           setShowLoadingProgress(false);
           setLoadingProgress(0);
@@ -662,7 +587,6 @@ function App() {
       const updatedWorkbook = MultiSheetHandler.deleteWorksheet(workbook, name);
       setWorkbook(updatedWorkbook);
       
-      // Update current data if we deleted the active sheet
       if (name === workbook.activeWorksheet) {
         const newActiveSheet = updatedWorkbook.worksheets.find(ws => ws.isActive);
         if (newActiveSheet) {
@@ -706,7 +630,6 @@ function App() {
           break;
 
         case 'csv':
-          // Export active sheet as CSV
           const activeSheet = workbook.worksheets.find(ws => ws.isActive);
           if (activeSheet) {
             exportToCSV(options.fileName || 'spreadsheet_export', activeSheet.cells);
@@ -811,27 +734,19 @@ function App() {
 
   const handleSuggestionSubmit = (suggestion: SuggestionFeedback) => {
     setSuggestions(prev => [...prev, suggestion]);
-    
-    // In a real app, you'd send this to your backend
     console.log('New suggestion received:', suggestion);
-    
-    // Simulate sending to developer
     addNotification('Thank you for your feedback! We\'ll review your suggestion.', 'success');
   };
 
   const handleRatingSubmit = (rating: any) => {
     localStorage.setItem('excelAnalyzerRated', 'true');
-    
-    // In a real app, you'd send this to your analytics service
     console.log('Rating submitted:', rating);
-    
     addNotification('Thank you for rating Excel Analyzer Pro!', 'success');
   };
 
   const selectedCell = spreadsheetData.selectedCell ? spreadsheetData.cells[spreadsheetData.selectedCell] : undefined;
 
   const enhancedSuggestions = [
-    // Natural Language Queries
     'Extract west region data',
     'Show top 10 sales records',
     'Find products with highest revenue',
@@ -842,14 +757,10 @@ function App() {
     'Find records where sales > 1000',
     'Compare north vs south region',
     'Show total sales by region',
-    
-    // Multi-sheet queries
     'Extract data from Sheet2',
     'Compare Sheet1 vs Sheet2',
     'Analyze sales sheet data',
     'Show summary from all sheets',
-    
-    // Data Analytics
     'Analyze data for insights and trends',
     'Find outliers in the dataset',
     'Calculate correlation between columns',
@@ -857,8 +768,6 @@ function App() {
     'Assess data quality and completeness',
     'Create distribution analysis',
     'Perform statistical analysis',
-    
-    // Excel Functions via Natural Language
     'Perform VLOOKUP on column A using table B1:D10',
     'Calculate SUM of range E1:E20',
     'Apply AVERAGE function to column C',
@@ -892,7 +801,6 @@ function App() {
     'Clear range B1:B10',
   ];
 
-  // Show authentication modal if not logged in
   if (!user) {
     return (
       <>
@@ -926,7 +834,6 @@ function App() {
     );
   }
 
-  // Show welcome screen if no data is loaded
   if (showWelcomeScreen && !isDataLoaded) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -940,28 +847,24 @@ function App() {
           onRatingClick={() => setShowRatingModal(true)}
         />
         
-        {/* Sheet Creator */}
         <SheetCreator
           isVisible={showSheetCreator}
           onClose={() => setShowSheetCreator(false)}
           onCreateSheet={handleCreateNewSheet}
         />
         
-        {/* Referral Panel */}
         <ReferralPanel
           isVisible={showReferralPanel}
           onClose={() => setShowReferralPanel(false)}
           userId={user.id}
         />
 
-        {/* Rating Modal */}
         <RatingModal
           isVisible={showRatingModal}
           onClose={() => setShowRatingModal(false)}
           onSubmitRating={handleRatingSubmit}
         />
 
-        {/* Loading Progress */}
         <LoadingProgress
           isVisible={showLoadingProgress}
           progress={loadingProgress}
@@ -1009,7 +912,7 @@ function App() {
       )}
 
       {/* Subscription Banner */}
-      <div className={`fixed top-0 left-0 right-0 z-40`}>
+      <div className="fixed top-0 left-0 right-0 z-40">
         <SubscriptionBanner
           trialInfo={trialInfo}
           isSubscribed={isSubscribed}
@@ -1051,7 +954,7 @@ function App() {
                   alt="Excel Pro AI" 
                   className="h-10 w-10"
                 />
-                <RefreshCw className="h-3 w-3 text-cyan-500 absolute -top-1 -right-1" />
+                <RotateCcw className="h-3 w-3 text-cyan-500 absolute -top-1 -right-1" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-blue-600 bg-clip-text text-transparent">Excel Pro AI</h1>
@@ -1135,7 +1038,6 @@ function App() {
 
         {/* Main Content Area */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Spreadsheet Area */}
           <div className="flex-1 flex flex-col">
             <div className="flex-1 p-6 overflow-hidden">
               <SpreadsheetGrid
@@ -1145,7 +1047,6 @@ function App() {
               />
             </div>
             
-            {/* Status Bar */}
             <StatusBar
               selectedCell={spreadsheetData.selectedCell}
               cell={selectedCell}
@@ -1154,14 +1055,13 @@ function App() {
           </div>
         </div>
 
-        {/* Footer */}
         <Footer 
           onReferralClick={() => setShowReferralPanel(true)}
           onRatingClick={() => setShowRatingModal(true)}
         />
       </div>
 
-      {/* Dynamic Chat Button */}
+      {/* Chat Button */}
       <div className="fixed bottom-6 right-6 z-50">
         <button
           onClick={() => setShowChatBot(true)}
@@ -1172,14 +1072,13 @@ function App() {
         </button>
       </div>
 
-      {/* Analytics Panel */}
+      {/* Modals and Panels */}
       <AnalyticsPanel
         data={spreadsheetData}
         isVisible={showAnalyticsPanel}
         onClose={() => setShowAnalyticsPanel(false)}
       />
 
-      {/* Query Results Panel */}
       <QueryResultsPanel
         result={queryResult}
         isVisible={showQueryResults}
@@ -1187,7 +1086,6 @@ function App() {
         onExport={handleExportQueryResults}
       />
 
-      {/* Pivot Table Panel */}
       <PivotTablePanel
         data={spreadsheetData}
         isVisible={showPivotPanel}
@@ -1195,7 +1093,6 @@ function App() {
         onExport={handleExportQueryResults}
       />
 
-      {/* Export Modal */}
       <ExportModal
         isVisible={showExportModal}
         onClose={() => setShowExportModal(false)}
@@ -1203,7 +1100,6 @@ function App() {
         hasData={Object.keys(spreadsheetData.cells).length > 0}
       />
 
-      {/* Formula Assistant */}
       <FormulaAssistant
         cells={spreadsheetData.cells}
         onCellUpdate={handleCellChange}
@@ -1212,14 +1108,12 @@ function App() {
         onClose={() => setShowFormulaAssistant(false)}
       />
 
-      {/* Sheet Creator */}
       <SheetCreator
         isVisible={showSheetCreator}
         onClose={() => setShowSheetCreator(false)}
         onCreateSheet={handleCreateNewSheet}
       />
 
-      {/* Subscription Modal */}
       <SubscriptionModal
         isVisible={showSubscriptionModal}
         onClose={() => setShowSubscriptionModal(false)}
@@ -1227,28 +1121,24 @@ function App() {
         onSubscriptionSuccess={handleSubscriptionSuccess}
       />
 
-      {/* Referral Panel */}
       <ReferralPanel
         isVisible={showReferralPanel}
         onClose={() => setShowReferralPanel(false)}
         userId={user.id}
       />
 
-      {/* Chat Bot */}
       <ChatBot
         isVisible={showChatBot}
         onClose={() => setShowChatBot(false)}
         onSuggestionSubmit={handleSuggestionSubmit}
       />
 
-      {/* Rating Modal */}
       <RatingModal
         isVisible={showRatingModal}
         onClose={() => setShowRatingModal(false)}
         onSubmitRating={handleRatingSubmit}
       />
 
-      {/* Legal Modals */}
       <LegalModals
         activeModal={activeLegalModal}
         onClose={() => {
@@ -1257,7 +1147,6 @@ function App() {
         }}
       />
 
-      {/* Loading Progress */}
       <LoadingProgress
         isVisible={showLoadingProgress}
         progress={loadingProgress}
