@@ -8,7 +8,7 @@ import { ReferralService } from '../utils/referralService';
 import { DeviceService } from '../utils/deviceService';
 import { SecurityService } from '../utils/securityService';
 import { AuthService } from '../utils/authService';
-import { SMSService } from './smsService';
+import { SMSService } from '../utils/smsService';
 import 'react-phone-number-input/style.css';
 
 interface AuthModalProps {
