@@ -22,6 +22,8 @@ import { LegalModals } from './components/LegalModals';
 import { FormulaAssistant } from './components/FormulaAssistant';
 import { SheetCreator } from './components/SheetCreator';
 import { LoadingProgress } from './components/LoadingProgress';
+import { Logo } from './components/Logo';
+import { ScrollingBanner } from './components/ScrollingBanner';
 import { SpreadsheetData, Cell } from './types/spreadsheet';
 import { User } from './types/auth';
 import { SuggestionFeedback } from './types/chat';
@@ -801,6 +803,7 @@ function App() {
     'Clear range B1:B10',
   ];
 
+  // Show authentication modal if not logged in
   if (!user) {
     return (
       <>
@@ -813,11 +816,7 @@ function App() {
           <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex items-center justify-center">
             <div className="text-center">
               <div className="mb-6">
-                <img 
-                  src="/Tech Company Logo Excel Pro AI, Blue and Silver.png" 
-                  alt="Excel Pro AI" 
-                  className="h-24 w-24 mx-auto mb-4"
-                />
+                <Logo size="xl" className="mx-auto mb-4" />
               </div>
               <h1 className="text-3xl font-bold text-white mb-4">Excel Pro AI</h1>
               <p className="text-slate-300 mb-6">Advanced spreadsheet analysis with AI-powered insights</p>
@@ -834,6 +833,7 @@ function App() {
     );
   }
 
+  // Show welcome screen if no data is loaded
   if (showWelcomeScreen && !isDataLoaded) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -912,13 +912,13 @@ function App() {
       )}
 
       {/* Subscription Banner */}
-      <div className="fixed top-0 left-0 right-0 z-40">
+      <ScrollingBanner>
         <SubscriptionBanner
           trialInfo={trialInfo}
           isSubscribed={isSubscribed}
           onUpgradeClick={() => setShowSubscriptionModal(true)}
         />
-      </div>
+      </ScrollingBanner>
 
       {/* Sidebar */}
       <Sidebar
@@ -937,9 +937,7 @@ function App() {
       />
 
       {/* Main Content */}
-      <div className={`flex-1 ml-16 flex flex-col ${
-        trialInfo && !isSubscribed ? 'mt-12' : ''
-      }`}>
+      <div className="flex-1 ml-16 flex flex-col">
         {/* Header */}
         <header className="bg-white border-b border-slate-200 px-6 py-4 shadow-sm">
           <div className="flex items-center justify-between">
@@ -949,11 +947,7 @@ function App() {
               title="Click to refresh and start new analysis"
             >
               <div className="relative">
-                <img 
-                  src="/Tech Company Logo Excel Pro AI, Blue and Silver.png" 
-                  alt="Excel Pro AI" 
-                  className="h-10 w-10"
-                />
+                <Logo size="md" />
                 <RotateCcw className="h-3 w-3 text-cyan-500 absolute -top-1 -right-1" />
               </div>
               <div>

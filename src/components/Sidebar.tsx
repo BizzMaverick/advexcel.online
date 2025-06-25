@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { 
-  BarChart3, 
   Table, 
-  FileSpreadsheet, 
   ChevronRight,
   Activity,
   Download,
   Upload,
   Plus
 } from 'lucide-react';
+import { Logo } from './Logo';
 
 interface SidebarProps {
   onAnalyticsClick: () => void;
@@ -92,13 +91,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Header */}
         <div className="h-20 flex items-center justify-center border-b border-slate-200 bg-gradient-to-r from-cyan-600 to-blue-600">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <img 
-                src="/Tech Company Logo Excel Pro AI, Blue and Silver.png" 
-                alt="Excel Pro AI" 
-                className="h-5 w-5"
-              />
-            </div>
+            <Logo size="sm" showBackground={false} className="bg-white rounded-lg p-1.5" />
             {isExpanded && (
               <div className="text-white">
                 <h2 className="font-bold text-lg">Excel Pro</h2>

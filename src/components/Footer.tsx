@@ -1,5 +1,6 @@
 import React from 'react';
-import { FileSpreadsheet, Mail, Phone, Shield, Cookie, FileText, Heart, Gift, Star } from 'lucide-react';
+import { Mail, Phone, Shield, Heart, Gift, Star } from 'lucide-react';
+import { Logo } from './Logo';
 
 interface FooterProps {
   onReferralClick?: () => void;
@@ -32,11 +33,7 @@ export const Footer: React.FC<FooterProps> = ({ onReferralClick, onRatingClick }
             {/* Left Section - Company Info */}
             <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-3">
-                <img 
-                  src="/Tech Company Logo Excel Pro AI, Blue and Silver.png" 
-                  alt="Excel Pro AI" 
-                  className="h-6 w-6"
-                />
+                <Logo size="sm" />
                 <div>
                   <span className="text-sm font-bold">Excel Pro AI</span>
                   <span className="text-xs text-slate-400 ml-2">© {currentYear}</span>

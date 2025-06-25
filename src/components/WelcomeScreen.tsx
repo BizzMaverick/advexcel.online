@@ -1,5 +1,6 @@
 import React from 'react';
-import { FileSpreadsheet, Upload, BarChart3, TrendingUp, Search, Zap, Database, Shield, Star, Users, CheckCircle, ArrowRight, Play, BookOpen, Target, Award, Plus } from 'lucide-react';
+import { Upload, Zap, Shield, Star, Users, CheckCircle, ArrowRight, Play, HelpCircle, Target, Award, Plus } from 'lucide-react';
+import { Logo } from './Logo';
 
 interface WelcomeScreenProps {
   onImportFile: () => void;
@@ -10,28 +11,28 @@ interface WelcomeScreenProps {
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCreateNewSheet, isLoading }) => {
   const features = [
     {
-      icon: Search,
+      icon: HelpCircle,
       title: 'Natural Language Commands',
       description: 'Use simple English to manipulate data: "add data value 100 to cell A1", "apply formula", "format cells"',
       color: 'text-cyan-600 bg-cyan-100',
       benefits: ['No complex formulas needed', 'Instant data manipulation', 'Plain English commands']
     },
     {
-      icon: BarChart3,
+      icon: Target,
       title: 'Advanced Analytics',
       description: 'Automatic trend analysis, correlation detection, and outlier identification',
       color: 'text-blue-600 bg-blue-100',
       benefits: ['AI-powered insights', 'Statistical analysis', 'Predictive forecasting']
     },
     {
-      icon: TrendingUp,
+      icon: Award,
       title: 'Smart Forecasting',
       description: 'Generate predictions and forecasts based on your data patterns',
       color: 'text-purple-600 bg-purple-100',
       benefits: ['Future trend prediction', 'Business planning', 'Risk assessment']
     },
     {
-      icon: Database,
+      icon: Users,
       title: 'Full Excel Functionality',
       description: 'Complete Excel features with formulas, conditional formatting, pivot tables, and more',
       color: 'text-orange-600 bg-orange-100',
@@ -52,7 +53,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
     {
       title: "Sales Analysis",
       description: "Track performance, identify trends, and forecast revenue",
-      icon: TrendingUp,
+      icon: Target,
       examples: ["Monthly sales reports", "Regional performance", "Product analysis"]
     },
     {
@@ -64,7 +65,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
     {
       title: "Data Research",
       description: "Academic research, survey analysis, and statistical studies",
-      icon: BookOpen,
+      icon: HelpCircle,
       examples: ["Survey data analysis", "Research findings", "Statistical reports"]
     },
     {
@@ -89,7 +90,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
       title: "Use Natural Language Commands",
       description: "Manipulate data with simple English commands - no complex formulas required",
       details: "Type commands like 'add data value 100 to cell A1' or 'apply formula =SUM(A1:A10) to cell B1'.",
-      icon: Search,
+      icon: HelpCircle,
       color: "from-blue-500 to-purple-500"
     },
     {
@@ -97,7 +98,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
       title: "Get AI-Powered Insights",
       description: "Receive instant analytics, visualizations, and actionable insights",
       details: "View charts, pivot tables, statistical analysis, and forecasts generated automatically from your data.",
-      icon: BarChart3,
+      icon: Target,
       color: "from-purple-500 to-pink-500"
     }
   ];
@@ -108,11 +109,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
       <header className="bg-white/10 backdrop-blur-sm border-b border-white/20 px-6 py-4 sticky top-0 z-10">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center space-x-3">
-            <img 
-              src="/Tech Company Logo Excel Pro AI, Blue and Silver.png" 
-              alt="Excel Pro AI" 
-              className="h-8 w-8"
-            />
+            <Logo size="md" />
             <div>
               <h1 className="text-2xl font-bold text-white">Excel Pro AI</h1>
               <p className="text-sm text-slate-300">Advanced spreadsheet analysis with AI-powered insights</p>
@@ -140,11 +137,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
           <div className="text-center mb-16">
             <div className="mb-8">
               <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full mb-6 shadow-2xl">
-                <img 
-                  src="/Tech Company Logo Excel Pro AI, Blue and Silver.png" 
-                  alt="Excel Pro AI" 
-                  className="h-12 w-12"
-                />
+                <Logo size="lg" showBackground={false} />
               </div>
               <h2 className="text-5xl font-bold text-white mb-6 leading-tight">
                 Create & Analyze Spreadsheets with
@@ -210,7 +203,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
                 <span className="font-medium">AI Powered</span>
               </div>
               <div className="flex items-center space-x-2 text-orange-400">
-                <Database className="h-5 w-5" />
+                <Target className="h-5 w-5" />
                 <span className="font-medium">200+ Functions</span>
               </div>
             </div>

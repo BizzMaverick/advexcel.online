@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FileSpreadsheet, Plus, X, Eye, EyeOff, Download, Upload } from 'lucide-react';
 import { WorkbookData, WorksheetData } from '../types/workbook';
 import { Cell } from '../types/spreadsheet';
+import { Logo } from './Logo';
 
 interface WorkbookManagerProps {
   workbook: WorkbookData | null;
@@ -61,7 +62,7 @@ export const WorkbookManager: React.FC<WorkbookManagerProps> = ({
       <div className="px-4 py-2 border-b border-gray-100">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <FileSpreadsheet className="h-4 w-4 text-blue-600" />
+            <Logo size="sm" />
             <span className="text-sm font-medium text-gray-900">{workbook.name}</span>
             <span className="text-xs text-gray-500">
               ({workbook.worksheets.length} sheet{workbook.worksheets.length !== 1 ? 's' : ''})
