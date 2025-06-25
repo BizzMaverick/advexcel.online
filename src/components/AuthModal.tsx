@@ -7,6 +7,7 @@ import { SignupData, LoginCredentials } from '../types/auth';
 import { ReferralService } from '../utils/referralService';
 import { DeviceService } from '../utils/deviceService';
 import { SecurityService } from '../utils/securityService';
+import { AuthService } from '../utils/authService';
 import 'react-phone-number-input/style.css';
 
 interface AuthModalProps {
@@ -103,21 +104,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
     setError('');
     
     try {
-      // For demo purposes, we'll simulate sending an OTP
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const result = await AuthService.sendOTP(formData.identifier, identifierType);
       
-      // Store OTP temporarily (in production, use secure backend storage)
-      localStorage.setItem(`otp_${formData.identifier}`, JSON.stringify({
-        otp,
-        timestamp: Date.now(),
-        attempts: 0
-      }));
-      
-      startOtpTimer();
-      setDemoOTP(otp);
-      setSuccess(`OTP sent to ${formData.identifier}. Check your inbox or phone.`);
+      if (result.success) {
+        setSuccess(result.message);
+        startOtpTimer();
+        
+        // For demo purposes, retrieve the OTP that was generated
+        const storedData = localStorage.getItem(`otp_${formData.identifier}`);
+        if (storedData) {
+          const { code } = JSON.parse(storedData);
+          setDemoOTP(code);
+        }
+      } else {
+        setError(result.message);
+      }
     } catch (error) {
-      setError('Failed to send OTP. Please try again.');
+      setError('Failed to send verification code. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -125,7 +128,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
 
   const copyOTPToClipboard = () => {
     navigator.clipboard.writeText(demoOTP);
-    setSuccess('OTP copied to clipboard!');
+    setSuccess('Code copied to clipboard!');
     setTimeout(() => setSuccess(''), 2000);
   };
 
@@ -223,25 +226,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
         }
       } else if (mode === 'otp') {
         if (formData.otp.length !== 6) {
-          throw new Error('Please enter a valid 6-digit OTP');
+          throw new Error('Please enter a valid 6-digit verification code');
         }
 
         // Verify OTP
-        const storedData = localStorage.getItem(`otp_${formData.identifier}`);
-        if (!storedData) {
-          throw new Error('OTP expired. Please request a new one.');
-        }
-
-        const { otp, timestamp } = JSON.parse(storedData);
+        const result = await AuthService.verifyOTP(formData.identifier, formData.otp);
         
-        // Check if OTP is expired (5 minutes)
-        if (Date.now() - timestamp > 5 * 60 * 1000) {
-          localStorage.removeItem(`otp_${formData.identifier}`);
-          throw new Error('OTP has expired. Please request a new one.');
-        }
-
-        if (formData.otp !== otp) {
-          throw new Error('Invalid OTP. Please try again.');
+        if (!result.success) {
+          throw new Error(result.message);
         }
 
         // OTP verified, proceed with login
@@ -251,18 +243,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
           rememberDevice: formData.rememberDevice
         };
 
-        const result = await login(credentials);
+        const loginResult = await login(credentials);
         
-        if (result.success && result.user) {
+        if (loginResult.success && loginResult.user) {
           // Apply referral code if provided
           if (formData.referralCode) {
-            ReferralService.applyReferralCode(formData.referralCode, result.user.id);
+            ReferralService.applyReferralCode(formData.referralCode, loginResult.user.id);
           }
           
-          onAuthSuccess(result.user);
+          onAuthSuccess(loginResult.user);
           onClose();
         } else {
-          throw new Error(result.message || 'Login failed after OTP verification');
+          throw new Error(loginResult.message || 'Login failed after verification');
         }
       } else if (mode === 'forgot-password') {
         if (!validateIdentifier()) {
@@ -273,7 +265,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
         setMode('reset-password');
       } else if (mode === 'reset-password') {
         if (formData.otp.length !== 6) {
-          throw new Error('Please enter a valid 6-digit OTP');
+          throw new Error('Please enter a valid 6-digit verification code');
         }
         if (formData.password.length < 8) {
           throw new Error('Password must be at least 8 characters');
@@ -283,23 +275,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
         }
 
         // Verify OTP
-        const storedData = localStorage.getItem(`otp_${formData.identifier}`);
-        if (!storedData) {
-          throw new Error('OTP expired. Please request a new one.');
-        }
-
-        const { otp } = JSON.parse(storedData);
+        const otpResult = await AuthService.verifyOTP(formData.identifier, formData.otp);
         
-        if (formData.otp !== otp) {
-          throw new Error('Invalid OTP. Please try again.');
+        if (!otpResult.success) {
+          throw new Error(otpResult.message);
         }
 
         // In a real app, reset password with backend
-        setSuccess('Password reset successfully!');
-        setTimeout(() => {
-          setMode('login');
-          resetForm();
-        }, 1000);
+        // For demo, we'll simulate password reset
+        const user = await AuthService['findUserByIdentifier'](formData.identifier);
+        if (user) {
+          const hashedPassword = await CryptoService.hashPassword(formData.password);
+          await AuthService['storeUser'](user, hashedPassword);
+          
+          setSuccess('Password reset successfully!');
+          setTimeout(() => {
+            setMode('login');
+            resetForm();
+          }, 1000);
+        } else {
+          throw new Error('User not found');
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

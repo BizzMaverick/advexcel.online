@@ -1,24 +1,17 @@
+import * as otplib from 'otplib';
+import * as bcrypt from 'bcryptjs';
+
 export class CryptoService {
   private static readonly SALT_ROUNDS = 12;
   private static readonly ENCRYPTION_KEY = 'your-encryption-key-change-in-production';
 
-  // Password hashing using Web Crypto API (Argon2 alternative)
+  // Password hashing using bcrypt
   static async hashPassword(password: string): Promise<string> {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password + this.generateSalt());
-    
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    
-    return hashHex;
+    return bcrypt.hashSync(password, this.SALT_ROUNDS);
   }
 
   static async verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-    // In production, use proper bcrypt or Argon2
-    // This is a simplified implementation
-    const testHash = await this.hashPassword(password);
-    return this.constantTimeCompare(testHash, hashedPassword);
+    return bcrypt.compareSync(password, hashedPassword);
   }
 
   // Encryption/Decryption
@@ -65,9 +58,7 @@ export class CryptoService {
 
   // MFA/TOTP
   static generateMFASecret(): string {
-    const array = new Uint8Array(20);
-    crypto.getRandomValues(array);
-    return this.base32Encode(array);
+    return otplib.authenticator.generateSecret();
   }
 
   static async generateMFAQRCode(secret: string, userId: string): Promise<string> {
@@ -88,16 +79,7 @@ export class CryptoService {
   }
 
   static verifyTOTP(secret: string, token: string): boolean {
-    // Simplified TOTP verification
-    // In production, use a proper TOTP library
-    const timeStep = Math.floor(Date.now() / 30000);
-    const expectedToken = this.generateTOTP(secret, timeStep);
-    
-    // Allow for time drift (check current and previous time step)
-    const previousToken = this.generateTOTP(secret, timeStep - 1);
-    
-    return this.constantTimeCompare(token, expectedToken) || 
-           this.constantTimeCompare(token, previousToken);
+    return otplib.authenticator.verify({ token, secret });
   }
 
   // CSRF Protection
@@ -148,41 +130,5 @@ export class CryptoService {
       false,
       ['encrypt', 'decrypt']
     );
-  }
-
-  private static base32Encode(buffer: Uint8Array): string {
-    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-    let result = '';
-    let bits = 0;
-    let value = 0;
-    
-    for (const byte of buffer) {
-      value = (value << 8) | byte;
-      bits += 8;
-      
-      while (bits >= 5) {
-        result += alphabet[(value >>> (bits - 5)) & 31];
-        bits -= 5;
-      }
-    }
-    
-    if (bits > 0) {
-      result += alphabet[(value << (5 - bits)) & 31];
-    }
-    
-    return result;
-  }
-
-  private static generateTOTP(secret: string, timeStep: number): string {
-    // Simplified TOTP generation
-    // In production, use a proper TOTP library
-    const hash = timeStep.toString() + secret;
-    let code = 0;
-    
-    for (let i = 0; i < hash.length; i++) {
-      code += hash.charCodeAt(i);
-    }
-    
-    return (code % 1000000).toString().padStart(6, '0');
   }
 }

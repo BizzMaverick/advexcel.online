@@ -15,6 +15,7 @@ import {
 } from '../types/auth';
 import { JWTService } from './jwtService';
 import { CryptoService } from './cryptoService';
+import * as otplib from 'otplib';
 
 export class AuthService {
   private static readonly API_BASE = process.env.VITE_API_BASE || 'https://api.excelanalyzerpro.com';
@@ -192,8 +193,12 @@ export class AuthService {
       // Store user (in production, this would be a database call)
       await this.storeUser(user, hashedPassword);
 
-      // Send verification email/SMS
-      await this.sendVerificationCode(user);
+      // Generate and send OTP
+      const otp = this.generateOTP();
+      await this.storeOTP(signupData.identifier, otp);
+      
+      // In production, this would send an actual email/SMS
+      console.log(`OTP for ${signupData.identifier}: ${otp}`);
 
       // Audit log
       await AuditService.log({
@@ -214,6 +219,129 @@ export class AuthService {
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Registration failed'
+      };
+    }
+  }
+
+  static async sendOTP(identifier: string, type: 'email' | 'phone'): Promise<{ success: boolean; message: string }> {
+    try {
+      // Rate limiting check
+      const rateLimitCheck = await RateLimitService.checkLimit('otp', identifier);
+      if (!rateLimitCheck.allowed) {
+        throw new Error(`Too many OTP requests. Try again in ${rateLimitCheck.resetTime} seconds.`);
+      }
+
+      // Generate OTP
+      const otp = this.generateOTP();
+      
+      // Store OTP
+      await this.storeOTP(identifier, otp);
+      
+      // In production, send actual email/SMS
+      if (type === 'email') {
+        // Send email with OTP
+        console.log(`Email OTP for ${identifier}: ${otp}`);
+        // await this.sendEmailOTP(identifier, otp);
+      } else {
+        // Send SMS with OTP
+        console.log(`SMS OTP for ${identifier}: ${otp}`);
+        // await this.sendSMSOTP(identifier, otp);
+      }
+
+      // Log OTP generation
+      await AuditService.log({
+        action: 'otp_generated',
+        resource: 'auth',
+        details: { identifier, type },
+        ipAddress: await this.getClientIP(),
+        success: true
+      });
+
+      return {
+        success: true,
+        message: `Verification code sent to your ${type === 'email' ? 'email' : 'phone'}`
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to send verification code'
+      };
+    }
+  }
+
+  static async verifyOTP(identifier: string, otp: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const storedData = localStorage.getItem(`otp_${identifier}`);
+      
+      if (!storedData) {
+        return {
+          success: false,
+          message: 'Verification code expired or not found. Please request a new one.'
+        };
+      }
+
+      const { code, timestamp, attempts } = JSON.parse(storedData);
+      
+      // Check if OTP is expired (5 minutes)
+      if (Date.now() - timestamp > 5 * 60 * 1000) {
+        localStorage.removeItem(`otp_${identifier}`);
+        return {
+          success: false,
+          message: 'Verification code has expired. Please request a new one.'
+        };
+      }
+
+      // Check attempts limit
+      if (attempts >= 3) {
+        localStorage.removeItem(`otp_${identifier}`);
+        return {
+          success: false,
+          message: 'Too many failed attempts. Please request a new verification code.'
+        };
+      }
+
+      // Verify OTP
+      if (otp !== code) {
+        // Increment attempts
+        localStorage.setItem(`otp_${identifier}`, JSON.stringify({
+          code,
+          timestamp,
+          attempts: attempts + 1
+        }));
+        
+        return {
+          success: false,
+          message: `Invalid verification code. ${2 - attempts} attempts remaining.`
+        };
+      }
+
+      // OTP verified successfully
+      localStorage.removeItem(`otp_${identifier}`);
+      
+      // Update user verification status
+      const user = await this.findUserByIdentifier(identifier);
+      if (user) {
+        user.isVerified = true;
+        await this.updateUser(user);
+      }
+
+      // Log verification
+      await AuditService.log({
+        action: 'otp_verified',
+        resource: 'auth',
+        details: { identifier },
+        ipAddress: await this.getClientIP(),
+        success: true
+      });
+
+      return {
+        success: true,
+        message: 'Verification successful'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Verification failed'
       };
     }
   }
@@ -289,9 +417,9 @@ export class AuthService {
 
   // MFA Methods
   static async setupMFA(userId: string): Promise<MFASetup> {
-    const secret = CryptoService.generateMFASecret();
-    const qrCode = await CryptoService.generateMFAQRCode(secret, userId);
-    const backupCodes = CryptoService.generateBackupCodes();
+    const secret = otplib.authenticator.generateSecret();
+    const qrCode = await this.generateMFAQRCode(secret, userId);
+    const backupCodes = this.generateBackupCodes();
 
     // Store MFA secret (encrypted)
     await this.storeMFASecret(userId, secret);
@@ -324,7 +452,7 @@ export class AuthService {
       const secret = await this.getMFASecret(userId);
       if (!secret) return false;
 
-      return CryptoService.verifyTOTP(secret, code);
+      return otplib.authenticator.verify({ token: code, secret });
     } catch (error) {
       return false;
     }
@@ -534,6 +662,36 @@ export class AuthService {
     }
   }
 
+  // OTP Methods
+  private static generateOTP(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  private static async storeOTP(identifier: string, otp: string): Promise<void> {
+    localStorage.setItem(`otp_${identifier}`, JSON.stringify({
+      code: otp,
+      timestamp: Date.now(),
+      attempts: 0
+    }));
+  }
+
+  private static async generateMFAQRCode(secret: string, userId: string): Promise<string> {
+    const issuer = 'Excel Pro AI';
+    const otpauth = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(userId)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}`;
+    
+    // In production, use a QR code library
+    return `data:image/svg+xml;base64,${btoa(`<svg>QR Code for: ${otpauth}</svg>`)}`;
+  }
+
+  private static generateBackupCodes(): string[] {
+    const codes: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      const code = Math.random().toString(36).substr(2, 8).toUpperCase();
+      codes.push(code);
+    }
+    return codes;
+  }
+
   // Storage Methods
   private static async storeTokensSecurely(tokens: AuthTokens): Promise<void> {
     const encryptedTokens = await CryptoService.encrypt(JSON.stringify(tokens));
@@ -611,11 +769,6 @@ export class AuthService {
       user.security.failedLoginAttempts = 0; // Reset on successful login
       await this.updateUser(user);
     }
-  }
-
-  private static async sendVerificationCode(user: User): Promise<void> {
-    // In production, send actual verification email/SMS
-    console.log(`Verification code sent to ${user.email || user.phoneNumber}`);
   }
 
   private static async storeMFASecret(userId: string, secret: string): Promise<void> {
