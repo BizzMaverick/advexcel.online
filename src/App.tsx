@@ -36,11 +36,13 @@ import { LargeFileHandler } from './utils/largeFileHandler';
 import { NaturalLanguageProcessor, QueryResult } from './utils/naturalLanguageProcessor';
 import { DocumentConverter } from './utils/documentConverter';
 import { MultiSheetHandler } from './utils/multiSheetHandler';
+import { useAuthContext } from './context/AuthContext';
+import { AuthGuard } from './components/AuthGuard';
 
 function App() {
-  // Authentication state
-  const [user, setUser] = useState<User | null>(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  // Authentication state from context
+  const { user, isAuthenticated, logout } = useAuthContext();
+  const [showAuthModal, setShowAuthModal] = useState(!isAuthenticated);
   
   // Subscription state
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
@@ -82,58 +84,36 @@ function App() {
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(true);
   const [suggestions, setSuggestions] = useState<SuggestionFeedback[]>([]);
 
-  // Initialize demo user on app load
+  // Check authentication status on app load
   useEffect(() => {
-    try {
-      const savedUser = localStorage.getItem('excelAnalyzerUser');
-      if (savedUser) {
-        const userData = JSON.parse(savedUser);
-        setUser(userData);
-        setShowWelcomeScreen(true);
-      } else {
-        const demoUser: User = {
-          id: 'demo_user_' + Date.now(),
-          email: 'user@advexcel.online',
-          isVerified: true,
-          createdAt: new Date(),
-          lastLogin: new Date()
-        };
-        
-        setUser(demoUser);
-        localStorage.setItem('excelAnalyzerUser', JSON.stringify(demoUser));
-      }
-
-      const bannerDismissed = localStorage.getItem('privacyBannerDismissed');
-      if (bannerDismissed) {
-        setShowPrivacyBanner(false);
-      }
-
-      // Handle legal modal links from footer
-      const handleHashChange = () => {
-        const hash = window.location.hash.substring(1);
-        if (['terms', 'privacy', 'cookies', 'refunds'].includes(hash)) {
-          setActiveLegalModal(hash as any);
-        }
-      };
-
-      window.addEventListener('hashchange', handleHashChange);
-      handleHashChange();
-
-      return () => {
-        window.removeEventListener('hashchange', handleHashChange);
-      };
-    } catch (error) {
-      console.error('Error initializing app:', error);
-      const demoUser: User = {
-        id: 'demo_user_fallback',
-        email: 'user@advexcel.online',
-        isVerified: true,
-        createdAt: new Date(),
-        lastLogin: new Date()
-      };
-      setUser(demoUser);
+    // Show auth modal if not authenticated
+    setShowAuthModal(!isAuthenticated);
+    
+    // If authenticated, show welcome screen
+    if (isAuthenticated) {
+      setShowWelcomeScreen(true);
     }
-  }, []);
+
+    const bannerDismissed = localStorage.getItem('privacyBannerDismissed');
+    if (bannerDismissed) {
+      setShowPrivacyBanner(false);
+    }
+
+    // Handle legal modal links from footer
+    const handleHashChange = () => {
+      const hash = window.location.hash.substring(1);
+      if (['terms', 'privacy', 'cookies', 'refunds'].includes(hash)) {
+        setActiveLegalModal(hash as any);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange();
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, [isAuthenticated]);
 
   const addNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now();
@@ -149,19 +129,18 @@ function App() {
   };
 
   const handleAuthSuccess = (userData: User) => {
-    setUser(userData);
-    localStorage.setItem('excelAnalyzerUser', JSON.stringify(userData));
     setShowAuthModal(false);
     setShowWelcomeScreen(true);
     addNotification(`Welcome ${userData.email || userData.phoneNumber}!`, 'success');
   };
 
   const handleLogout = () => {
-    setShowAuthModal(true);
+    logout();
     setWorkbook(null);
     setSpreadsheetData({ cells: {}, selectedCell: undefined, selectedRange: [] });
     setIsDataLoaded(false);
     setShowWelcomeScreen(false);
+    setShowAuthModal(true);
     addNotification('Please sign in to continue', 'info');
   };
 
@@ -171,7 +150,7 @@ function App() {
   };
 
   const checkFeatureAccess = (): boolean => {
-    if (!user) {
+    if (!isAuthenticated) {
       addNotification('Please log in to access this feature.', 'error');
       setShowAuthModal(true);
       return false;
@@ -226,7 +205,7 @@ function App() {
 
       return { ...prev, cells: newCells };
     });
-  }, [workbook, user]);
+  }, [workbook, isAuthenticated]);
 
   const handleCellFormat = useCallback((cellId: string, format: any) => {
     if (!checkFeatureAccess()) return;
@@ -245,7 +224,7 @@ function App() {
         cells: { ...prev.cells, [cellId]: updatedCell }
       };
     });
-  }, [user]);
+  }, [isAuthenticated]);
 
   const handleCellSelect = useCallback((cellId: string) => {
     setSpreadsheetData(prev => ({ ...prev, selectedCell: cellId }));
@@ -358,7 +337,7 @@ function App() {
       console.error('Error executing command:', error);
       addNotification('Error executing command. Please try again.', 'error');
     }
-  }, [spreadsheetData, workbook, user, handleCellFormat]);
+  }, [spreadsheetData, workbook, isAuthenticated, handleCellFormat]);
 
   const calculateSelectionStats = () => {
     if (!spreadsheetData.selectedCell) return undefined;
@@ -804,7 +783,7 @@ function App() {
   ];
 
   // Show authentication modal if not logged in
-  if (!user) {
+  if (!isAuthenticated) {
     return (
       <>
         <AuthModal
@@ -970,7 +949,7 @@ function App() {
               
               <div className="flex items-center space-x-2 text-sm text-slate-600">
                 <Shield className="h-4 w-4 text-cyan-600" />
-                <span>{user.email || user.phoneNumber}</span>
+                <span>{user?.email || user?.phoneNumber}</span>
                 {isSubscribed && (
                   <span className="bg-cyan-100 text-cyan-800 px-2 py-1 rounded-full text-xs font-medium">
                     Pro
@@ -1111,14 +1090,14 @@ function App() {
       <SubscriptionModal
         isVisible={showSubscriptionModal}
         onClose={() => setShowSubscriptionModal(false)}
-        userId={user.id}
+        userId={user?.id || ''}
         onSubscriptionSuccess={handleSubscriptionSuccess}
       />
 
       <ReferralPanel
         isVisible={showReferralPanel}
         onClose={() => setShowReferralPanel(false)}
-        userId={user.id}
+        userId={user?.id || ''}
       />
 
       <ChatBot
@@ -1169,6 +1148,13 @@ function App() {
           </div>
         ))}
       </div>
+
+      {/* Auth Modal */}
+      <AuthModal
+        isVisible={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onAuthSuccess={handleAuthSuccess}
+      />
     </div>
   );
 }
