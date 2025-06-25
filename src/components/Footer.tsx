@@ -59,9 +59,9 @@ export const Footer: React.FC<FooterProps> = ({ onReferralClick, onRatingClick }
     <footer className="bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 text-white">
       {/* Main Footer Content */}
       <div className="max-w-7xl mx-auto px-6 py-16">
-        {/* Top Section - Company Info */}
-        <div className="mb-16">
-          <div className="flex items-center space-x-4 mb-6">
+        {/* Top Section - Company Info - Centered */}
+        <div className="mb-16 text-center">
+          <div className="flex items-center justify-center space-x-4 mb-6">
             <Logo size="lg" className="bg-white/10 backdrop-blur-sm border-white/20" />
             <div>
               <h3 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
@@ -71,13 +71,13 @@ export const Footer: React.FC<FooterProps> = ({ onReferralClick, onRatingClick }
             </div>
           </div>
           
-          <p className="text-slate-300 mb-8 leading-relaxed text-lg max-w-2xl">
+          <p className="text-slate-300 mb-8 leading-relaxed text-lg max-w-2xl mx-auto">
             Transform your spreadsheet data into actionable insights with natural language queries 
             and AI-powered analytics. 100% private and secure - your data never leaves your device.
           </p>
 
-          {/* Trust Indicators */}
-          <div className="flex flex-wrap items-center gap-6 mb-8">
+          {/* Trust Indicators - Centered */}
+          <div className="flex flex-wrap items-center justify-center gap-6 mb-8">
             <div className="flex items-center space-x-2 text-green-400 bg-green-400/10 px-4 py-2 rounded-full border border-green-400/20">
               <Shield className="h-5 w-5" />
               <span className="text-sm font-medium">100% Secure & Private</span>
@@ -266,21 +266,14 @@ export const Footer: React.FC<FooterProps> = ({ onReferralClick, onRatingClick }
       {/* Bottom Bar */}
       <div className="border-t border-slate-700/50 bg-slate-900/70 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
-            {/* Copyright */}
-            <div className="flex items-center space-x-4 text-sm text-slate-400">
+          <div className="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0">
+            {/* Copyright and Made with Love - Centered */}
+            <div className="flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-4 text-sm text-slate-400">
               <span>© {currentYear} Excel Pro AI. All rights reserved.</span>
-              <div className="hidden md:flex items-center space-x-2">
+              <div className="flex items-center space-x-2">
                 <Heart className="h-3 w-3 text-red-400" />
                 <span>Made with love for data analysts worldwide</span>
               </div>
-            </div>
-
-            {/* Version Info */}
-            <div className="flex items-center space-x-4 text-xs text-slate-500">
-              <span>Version 2.0.1</span>
-              <span className="hidden md:inline">•</span>
-              <span className="hidden md:inline">Last updated: Jan 2025</span>
             </div>
           </div>
 
