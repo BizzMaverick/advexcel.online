@@ -5,7 +5,17 @@ import { ErrorBoundary } from './utils/errorBoundary.tsx';
 import { LargeFileHandler } from './utils/largeFileHandler.ts';
 import { StackOptimizer } from './utils/stackOptimizer.ts';
 import { MemoryManager } from './utils/memoryManager.ts';
+import { AuthProvider } from './context/AuthContext.tsx';
+import { securityHeaders } from './utils/securityHeaders.ts';
 import './index.css';
+
+// Apply security headers
+Object.entries(securityHeaders).forEach(([key, value]) => {
+  const meta = document.createElement('meta');
+  meta.httpEquiv = key;
+  meta.content = value;
+  document.head.appendChild(meta);
+});
 
 // Increase JavaScript engine limits
 const increaseEngineCapacity = () => {
@@ -63,7 +73,9 @@ LargeFileHandler.initialize();
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <App />
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </ErrorBoundary>
   </StrictMode>
 );

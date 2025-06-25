@@ -1,183 +1,643 @@
 import { DeviceService } from './deviceService';
+import { SecurityService } from './securityService';
+import { AuditService } from './auditService';
+import { RateLimitService } from './rateLimitService';
+import { 
+  User, 
+  AuthTokens, 
+  LoginCredentials, 
+  SignupData, 
+  UserRole, 
+  Permission,
+  MFASetup,
+  SecuritySettings,
+  TrustedDevice
+} from '../types/auth';
+import { JWTService } from './jwtService';
+import { CryptoService } from './cryptoService';
 
 export class AuthService {
-  private static readonly API_BASE = 'https://api.excelanalyzerpro.com'; // Replace with your actual API
-  
-  static async sendOTP(identifier: string, type: 'email' | 'phone'): Promise<{ success: boolean; message: string }> {
+  private static readonly API_BASE = process.env.VITE_API_BASE || 'https://api.excelanalyzerpro.com';
+  private static readonly TOKEN_STORAGE_KEY = 'auth_tokens';
+  private static readonly USER_STORAGE_KEY = 'user_data';
+  private static readonly SESSION_STORAGE_KEY = 'session_data';
+
+  // Authentication Methods
+  static async login(credentials: LoginCredentials): Promise<{ 
+    success: boolean; 
+    user?: User; 
+    tokens?: AuthTokens;
+    requiresMFA?: boolean;
+    message: string 
+  }> {
     try {
-      // For demo purposes, we'll use a mock service
-      // In production, replace this with your actual OTP service
-      
-      if (type === 'email') {
-        return await this.sendEmailOTP(identifier);
-      } else {
-        return await this.sendSMSOTP(identifier);
+      // Rate limiting check
+      const rateLimitCheck = await RateLimitService.checkLimit('login', credentials.identifier);
+      if (!rateLimitCheck.allowed) {
+        throw new Error(`Too many login attempts. Try again in ${rateLimitCheck.resetTime} seconds.`);
       }
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Failed to send OTP. Please try again.'
-      };
-    }
-  }
 
-  private static async sendEmailOTP(email: string): Promise<{ success: boolean; message: string }> {
-    // For demo purposes, we'll simulate sending an email OTP
-    // In production, integrate with services like SendGrid, AWS SES, etc.
-    
-    const otp = this.generateOTP();
-    
-    // Store OTP temporarily (in production, use secure backend storage)
-    localStorage.setItem(`otp_${email}`, JSON.stringify({
-      otp,
-      timestamp: Date.now(),
-      attempts: 0
-    }));
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // For demo, show the OTP in console (remove in production)
-    console.log(`OTP for ${email}: ${otp}`);
-    
-    return {
-      success: true,
-      message: `OTP sent to ${email}. Check your inbox and spam folder.`
-    };
-  }
+      // Device fingerprinting
+      const deviceFingerprint = DeviceService.generateDeviceFingerprint();
+      const ipAddress = await this.getClientIP();
 
-  private static async sendSMSOTP(phoneNumber: string): Promise<{ success: boolean; message: string }> {
-    // For demo purposes, we'll simulate sending an SMS OTP
-    // In production, integrate with services like Twilio, AWS SNS, etc.
-    
-    const otp = this.generateOTP();
-    
-    // Store OTP temporarily (in production, use secure backend storage)
-    localStorage.setItem(`otp_${phoneNumber}`, JSON.stringify({
-      otp,
-      timestamp: Date.now(),
-      attempts: 0
-    }));
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // For demo, show the OTP in console (remove in production)
-    console.log(`OTP for ${phoneNumber}: ${otp}`);
-    
-    return {
-      success: true,
-      message: `OTP sent to ${phoneNumber} via SMS.`
-    };
-  }
+      // Audit log for login attempt
+      await AuditService.log({
+        action: 'login_attempt',
+        resource: 'auth',
+        details: { identifier: credentials.identifier, deviceFingerprint },
+        ipAddress,
+        success: false // Will update if successful
+      });
 
-  static verifyOTP(identifier: string, enteredOTP: string): { success: boolean; message: string } {
-    const storedData = localStorage.getItem(`otp_${identifier}`);
-    
-    if (!storedData) {
-      return {
-        success: false,
-        message: 'No OTP found. Please request a new one.'
-      };
-    }
+      // Validate credentials
+      const user = await this.validateCredentials(credentials.identifier, credentials.password);
+      if (!user) {
+        await this.handleFailedLogin(credentials.identifier, ipAddress);
+        throw new Error('Invalid credentials');
+      }
 
-    const { otp, timestamp, attempts } = JSON.parse(storedData);
-    
-    // Check if OTP is expired (5 minutes)
-    if (Date.now() - timestamp > 5 * 60 * 1000) {
-      localStorage.removeItem(`otp_${identifier}`);
-      return {
-        success: false,
-        message: 'OTP has expired. Please request a new one.'
-      };
-    }
+      // Check if account is locked
+      if (user.security.lockedUntil && new Date() < user.security.lockedUntil) {
+        throw new Error('Account is temporarily locked due to multiple failed attempts');
+      }
 
-    // Check attempts limit
-    if (attempts >= 3) {
-      localStorage.removeItem(`otp_${identifier}`);
-      return {
-        success: false,
-        message: 'Too many failed attempts. Please request a new OTP.'
-      };
-    }
+      // Check MFA requirement
+      if (user.security.mfaEnabled && !credentials.mfaCode) {
+        return {
+          success: false,
+          requiresMFA: true,
+          message: 'MFA code required'
+        };
+      }
 
-    if (enteredOTP === otp) {
-      localStorage.removeItem(`otp_${identifier}`);
-      return {
-        success: true,
-        message: 'OTP verified successfully!'
-      };
-    } else {
-      // Increment attempts
-      localStorage.setItem(`otp_${identifier}`, JSON.stringify({
-        otp,
-        timestamp,
-        attempts: attempts + 1
-      }));
+      // Verify MFA if provided
+      if (user.security.mfaEnabled && credentials.mfaCode) {
+        const mfaValid = await this.verifyMFA(user.id, credentials.mfaCode);
+        if (!mfaValid) {
+          throw new Error('Invalid MFA code');
+        }
+      }
+
+      // Check device trust
+      const isTrustedDevice = this.isDeviceTrusted(user, deviceFingerprint);
+      if (!isTrustedDevice && !credentials.rememberDevice) {
+        // Could implement additional verification here
+      }
+
+      // Generate tokens
+      const tokens = await JWTService.generateTokens(user);
       
-      return {
-        success: false,
-        message: `Invalid OTP. ${2 - attempts} attempts remaining.`
-      };
-    }
-  }
+      // Create session
+      const sessionId = await this.createSession(user.id, deviceFingerprint, ipAddress);
 
-  private static generateOTP(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  }
+      // Update user login info
+      await this.updateLastLogin(user.id, ipAddress);
 
-  static async authenticateUser(identifier: string, password: string): Promise<{ success: boolean; user?: any; message: string }> {
-    // Simulate authentication
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // For demo purposes, accept any password with length >= 6
-    if (password.length >= 6) {
-      const user = {
-        id: Date.now().toString(),
-        email: identifier.includes('@') ? identifier : undefined,
-        phoneNumber: !identifier.includes('@') ? identifier : undefined,
-        isVerified: true,
-        createdAt: new Date(),
-        lastLogin: new Date()
-      };
-      
+      // Add device to trusted list if requested
+      if (credentials.rememberDevice && !isTrustedDevice) {
+        await this.addTrustedDevice(user.id, deviceFingerprint, ipAddress);
+      }
+
+      // Store tokens securely
+      await this.storeTokensSecurely(tokens);
+      await this.storeUserData(user);
+
+      // Success audit log
+      await AuditService.log({
+        action: 'login_success',
+        resource: 'auth',
+        details: { userId: user.id, sessionId },
+        ipAddress,
+        success: true
+      });
+
       return {
         success: true,
         user,
-        message: 'Login successful!'
+        tokens,
+        message: 'Login successful'
       };
-    } else {
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Login failed';
+      
+      await AuditService.log({
+        action: 'login_failed',
+        resource: 'auth',
+        details: { identifier: credentials.identifier, error: errorMessage },
+        ipAddress: await this.getClientIP(),
+        success: false
+      });
+
       return {
         success: false,
-        message: 'Invalid credentials. Please check your password.'
+        message: errorMessage
       };
     }
   }
 
-  static async registerUser(identifier: string, password: string): Promise<{ success: boolean; message: string }> {
-    // Simulate registration
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // For demo purposes, always succeed
+  static async register(signupData: SignupData): Promise<{ 
+    success: boolean; 
+    user?: User; 
+    message: string 
+  }> {
+    try {
+      // Rate limiting
+      const rateLimitCheck = await RateLimitService.checkLimit('register', signupData.identifier);
+      if (!rateLimitCheck.allowed) {
+        throw new Error('Too many registration attempts. Please try again later.');
+      }
+
+      // Validate input
+      if (!this.validateSignupData(signupData)) {
+        throw new Error('Invalid registration data');
+      }
+
+      // Check if user already exists
+      const existingUser = await this.findUserByIdentifier(signupData.identifier);
+      if (existingUser) {
+        throw new Error('User already exists with this email/phone');
+      }
+
+      // Hash password
+      const hashedPassword = await CryptoService.hashPassword(signupData.password);
+
+      // Create user
+      const user: User = {
+        id: this.generateUserId(),
+        email: signupData.identifier.includes('@') ? signupData.identifier : undefined,
+        phoneNumber: !signupData.identifier.includes('@') ? signupData.identifier : undefined,
+        isVerified: false,
+        createdAt: new Date(),
+        lastLogin: new Date(),
+        role: UserRole.USER,
+        permissions: this.getDefaultPermissions(UserRole.USER),
+        profile: {
+          firstName: signupData.firstName,
+          lastName: signupData.lastName,
+          company: signupData.company,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          language: navigator.language
+        },
+        security: {
+          mfaEnabled: false,
+          trustedDevices: [],
+          lastPasswordChange: new Date(),
+          failedLoginAttempts: 0,
+          sessionTimeout: 480 // 8 hours
+        }
+      };
+
+      // Store user (in production, this would be a database call)
+      await this.storeUser(user, hashedPassword);
+
+      // Send verification email/SMS
+      await this.sendVerificationCode(user);
+
+      // Audit log
+      await AuditService.log({
+        action: 'user_registered',
+        resource: 'user',
+        details: { userId: user.id, identifier: signupData.identifier },
+        ipAddress: await this.getClientIP(),
+        success: true
+      });
+
+      return {
+        success: true,
+        user,
+        message: 'Registration successful. Please verify your account.'
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Registration failed'
+      };
+    }
+  }
+
+  static async refreshToken(): Promise<{ success: boolean; tokens?: AuthTokens; message: string }> {
+    try {
+      const currentTokens = await this.getStoredTokens();
+      if (!currentTokens?.refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      // Verify refresh token
+      const payload = await JWTService.verifyToken(currentTokens.refreshToken, 'refresh');
+      if (!payload) {
+        throw new Error('Invalid refresh token');
+      }
+
+      // Get user
+      const user = await this.findUserById(payload.userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Generate new tokens
+      const newTokens = await JWTService.generateTokens(user);
+      
+      // Store new tokens
+      await this.storeTokensSecurely(newTokens);
+
+      return {
+        success: true,
+        tokens: newTokens,
+        message: 'Token refreshed successfully'
+      };
+
+    } catch (error) {
+      await this.logout(); // Clear invalid tokens
+      return {
+        success: false,
+        message: 'Token refresh failed'
+      };
+    }
+  }
+
+  static async logout(): Promise<void> {
+    try {
+      const tokens = await this.getStoredTokens();
+      const user = await this.getStoredUser();
+
+      if (tokens && user) {
+        // Invalidate session
+        await this.invalidateSession(user.id);
+
+        // Audit log
+        await AuditService.log({
+          action: 'logout',
+          resource: 'auth',
+          details: { userId: user.id },
+          ipAddress: await this.getClientIP(),
+          success: true
+        });
+      }
+
+      // Clear stored data
+      await this.clearStoredData();
+
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still clear local data even if server call fails
+      await this.clearStoredData();
+    }
+  }
+
+  // MFA Methods
+  static async setupMFA(userId: string): Promise<MFASetup> {
+    const secret = CryptoService.generateMFASecret();
+    const qrCode = await CryptoService.generateMFAQRCode(secret, userId);
+    const backupCodes = CryptoService.generateBackupCodes();
+
+    // Store MFA secret (encrypted)
+    await this.storeMFASecret(userId, secret);
+
     return {
-      success: true,
-      message: 'Account created successfully! Please verify your OTP.'
+      secret,
+      qrCode,
+      backupCodes
     };
   }
 
-  static async resetPassword(identifier: string, newPassword: string, otp: string): Promise<{ success: boolean; message: string }> {
-    const otpVerification = this.verifyOTP(identifier, otp);
+  static async enableMFA(userId: string, verificationCode: string): Promise<boolean> {
+    const isValid = await this.verifyMFA(userId, verificationCode);
+    if (isValid) {
+      await this.updateUserMFAStatus(userId, true);
+      
+      await AuditService.log({
+        action: 'mfa_enabled',
+        resource: 'user_security',
+        details: { userId },
+        ipAddress: await this.getClientIP(),
+        success: true
+      });
+    }
+    return isValid;
+  }
+
+  static async verifyMFA(userId: string, code: string): Promise<boolean> {
+    try {
+      const secret = await this.getMFASecret(userId);
+      if (!secret) return false;
+
+      return CryptoService.verifyTOTP(secret, code);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // Permission Methods
+  static hasPermission(user: User, permission: Permission): boolean {
+    return user.permissions.includes(permission) || this.hasAdminRole(user);
+  }
+
+  static hasRole(user: User, role: UserRole): boolean {
+    return user.role === role;
+  }
+
+  static hasAdminRole(user: User): boolean {
+    return user.role === UserRole.ADMIN;
+  }
+
+  static getDefaultPermissions(role: UserRole): Permission[] {
+    switch (role) {
+      case UserRole.ADMIN:
+        return Object.values(Permission);
+      case UserRole.USER:
+        return [
+          Permission.READ_DATA,
+          Permission.WRITE_DATA,
+          Permission.EXPORT_DATA,
+          Permission.IMPORT_DATA,
+          Permission.VIEW_ANALYTICS,
+          Permission.CREATE_REPORTS,
+          Permission.USE_AI_FEATURES,
+          Permission.CREATE_FORMULAS,
+          Permission.MANAGE_WORKBOOKS
+        ];
+      case UserRole.VIEWER:
+        return [
+          Permission.READ_DATA,
+          Permission.VIEW_ANALYTICS
+        ];
+      default:
+        return [];
+    }
+  }
+
+  // Security Methods
+  static async validateSession(): Promise<boolean> {
+    try {
+      const tokens = await this.getStoredTokens();
+      if (!tokens) return false;
+
+      const payload = await JWTService.verifyToken(tokens.accessToken, 'access');
+      if (!payload) {
+        // Try to refresh token
+        const refreshResult = await this.refreshToken();
+        return refreshResult.success;
+      }
+
+      // Check if session is still valid
+      const sessionValid = await this.isSessionValid(payload.userId, payload.sessionId);
+      return sessionValid;
+
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // Private Helper Methods
+  private static async validateCredentials(identifier: string, password: string): Promise<User | null> {
+    // In production, this would query your database
+    const userData = localStorage.getItem(`user_${identifier}`);
+    if (!userData) return null;
+
+    const { user, hashedPassword } = JSON.parse(userData);
+    const isValid = await CryptoService.verifyPassword(password, hashedPassword);
     
-    if (!otpVerification.success) {
-      return otpVerification;
+    return isValid ? user : null;
+  }
+
+  private static async handleFailedLogin(identifier: string, ipAddress: string): Promise<void> {
+    // Increment failed attempts
+    const user = await this.findUserByIdentifier(identifier);
+    if (user) {
+      user.security.failedLoginAttempts += 1;
+      
+      // Lock account after 5 failed attempts
+      if (user.security.failedLoginAttempts >= 5) {
+        user.security.lockedUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+      }
+      
+      await this.updateUser(user);
     }
 
-    // Simulate password reset
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    return {
-      success: true,
-      message: 'Password reset successfully!'
+    // Log security event
+    await SecurityService.logSecurityEvent({
+      type: 'login_attempt',
+      details: { identifier, failedAttempts: user?.security.failedLoginAttempts || 1 },
+      ipAddress,
+      severity: user?.security.failedLoginAttempts >= 3 ? 'warning' : 'info'
+    });
+  }
+
+  private static isDeviceTrusted(user: User, deviceFingerprint: string): boolean {
+    return user.security.trustedDevices.some(device => 
+      device.deviceFingerprint === deviceFingerprint
+    );
+  }
+
+  private static async addTrustedDevice(userId: string, deviceFingerprint: string, ipAddress: string): Promise<void> {
+    const user = await this.findUserById(userId);
+    if (!user) return;
+
+    const trustedDevice: TrustedDevice = {
+      id: this.generateId(),
+      deviceFingerprint,
+      deviceName: this.getDeviceName(),
+      lastUsed: new Date(),
+      ipAddress,
+      userAgent: navigator.userAgent
     };
+
+    user.security.trustedDevices.push(trustedDevice);
+    await this.updateUser(user);
+  }
+
+  private static async createSession(userId: string, deviceFingerprint: string, ipAddress: string): Promise<string> {
+    const sessionId = this.generateId();
+    const sessionData = {
+      id: sessionId,
+      userId,
+      deviceFingerprint,
+      ipAddress,
+      userAgent: navigator.userAgent,
+      createdAt: new Date(),
+      lastActivity: new Date(),
+      expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000), // 8 hours
+      isActive: true
+    };
+
+    localStorage.setItem(`session_${sessionId}`, JSON.stringify(sessionData));
+    return sessionId;
+  }
+
+  private static async isSessionValid(userId: string, sessionId: string): Promise<boolean> {
+    const sessionData = localStorage.getItem(`session_${sessionId}`);
+    if (!sessionData) return false;
+
+    const session = JSON.parse(sessionData);
+    return session.isActive && 
+           session.userId === userId && 
+           new Date() < new Date(session.expiresAt);
+  }
+
+  private static async invalidateSession(userId: string): Promise<void> {
+    // In production, this would invalidate all sessions for the user
+    const keys = Object.keys(localStorage);
+    keys.forEach(key => {
+      if (key.startsWith('session_')) {
+        const sessionData = localStorage.getItem(key);
+        if (sessionData) {
+          const session = JSON.parse(sessionData);
+          if (session.userId === userId) {
+            localStorage.removeItem(key);
+          }
+        }
+      }
+    });
+  }
+
+  private static validateSignupData(data: SignupData): boolean {
+    if (!data.identifier || !data.password || !data.acceptTerms) return false;
+    if (data.password !== data.confirmPassword) return false;
+    if (data.password.length < 8) return false;
+    
+    // Email validation
+    if (data.identifier.includes('@')) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(data.identifier);
+    }
+    
+    // Phone validation (basic)
+    return data.identifier.length >= 10;
+  }
+
+  private static generateUserId(): string {
+    return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  }
+
+  private static generateId(): string {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  }
+
+  private static getDeviceName(): string {
+    const ua = navigator.userAgent;
+    if (ua.includes('Chrome')) return 'Chrome Browser';
+    if (ua.includes('Firefox')) return 'Firefox Browser';
+    if (ua.includes('Safari')) return 'Safari Browser';
+    if (ua.includes('Edge')) return 'Edge Browser';
+    return 'Unknown Browser';
+  }
+
+  private static async getClientIP(): Promise<string> {
+    try {
+      // In production, this would be handled by your backend
+      return '127.0.0.1';
+    } catch {
+      return '127.0.0.1';
+    }
+  }
+
+  // Storage Methods
+  private static async storeTokensSecurely(tokens: AuthTokens): Promise<void> {
+    const encryptedTokens = await CryptoService.encrypt(JSON.stringify(tokens));
+    localStorage.setItem(this.TOKEN_STORAGE_KEY, encryptedTokens);
+  }
+
+  private static async getStoredTokens(): Promise<AuthTokens | null> {
+    try {
+      const encryptedTokens = localStorage.getItem(this.TOKEN_STORAGE_KEY);
+      if (!encryptedTokens) return null;
+
+      const decryptedTokens = await CryptoService.decrypt(encryptedTokens);
+      return JSON.parse(decryptedTokens);
+    } catch {
+      return null;
+    }
+  }
+
+  private static async storeUserData(user: User): Promise<void> {
+    const encryptedUser = await CryptoService.encrypt(JSON.stringify(user));
+    localStorage.setItem(this.USER_STORAGE_KEY, encryptedUser);
+  }
+
+  private static async getStoredUser(): Promise<User | null> {
+    try {
+      const encryptedUser = localStorage.getItem(this.USER_STORAGE_KEY);
+      if (!encryptedUser) return null;
+
+      const decryptedUser = await CryptoService.decrypt(encryptedUser);
+      return JSON.parse(decryptedUser);
+    } catch {
+      return null;
+    }
+  }
+
+  private static async clearStoredData(): Promise<void> {
+    localStorage.removeItem(this.TOKEN_STORAGE_KEY);
+    localStorage.removeItem(this.USER_STORAGE_KEY);
+    localStorage.removeItem(this.SESSION_STORAGE_KEY);
+  }
+
+  // Placeholder methods for production implementation
+  private static async findUserByIdentifier(identifier: string): Promise<User | null> {
+    const userData = localStorage.getItem(`user_${identifier}`);
+    return userData ? JSON.parse(userData).user : null;
+  }
+
+  private static async findUserById(id: string): Promise<User | null> {
+    // In production, query database by user ID
+    return await this.getStoredUser();
+  }
+
+  private static async storeUser(user: User, hashedPassword: string): Promise<void> {
+    const identifier = user.email || user.phoneNumber;
+    if (identifier) {
+      localStorage.setItem(`user_${identifier}`, JSON.stringify({ user, hashedPassword }));
+    }
+  }
+
+  private static async updateUser(user: User): Promise<void> {
+    const identifier = user.email || user.phoneNumber;
+    if (identifier) {
+      const existing = localStorage.getItem(`user_${identifier}`);
+      if (existing) {
+        const { hashedPassword } = JSON.parse(existing);
+        localStorage.setItem(`user_${identifier}`, JSON.stringify({ user, hashedPassword }));
+      }
+    }
+  }
+
+  private static async updateLastLogin(userId: string, ipAddress: string): Promise<void> {
+    const user = await this.findUserById(userId);
+    if (user) {
+      user.lastLogin = new Date();
+      user.security.failedLoginAttempts = 0; // Reset on successful login
+      await this.updateUser(user);
+    }
+  }
+
+  private static async sendVerificationCode(user: User): Promise<void> {
+    // In production, send actual verification email/SMS
+    console.log(`Verification code sent to ${user.email || user.phoneNumber}`);
+  }
+
+  private static async storeMFASecret(userId: string, secret: string): Promise<void> {
+    const encryptedSecret = await CryptoService.encrypt(secret);
+    localStorage.setItem(`mfa_${userId}`, encryptedSecret);
+  }
+
+  private static async getMFASecret(userId: string): Promise<string | null> {
+    try {
+      const encryptedSecret = localStorage.getItem(`mfa_${userId}`);
+      if (!encryptedSecret) return null;
+      return await CryptoService.decrypt(encryptedSecret);
+    } catch {
+      return null;
+    }
+  }
+
+  private static async updateUserMFAStatus(userId: string, enabled: boolean): Promise<void> {
+    const user = await this.findUserById(userId);
+    if (user) {
+      user.security.mfaEnabled = enabled;
+      await this.updateUser(user);
+    }
   }
 }

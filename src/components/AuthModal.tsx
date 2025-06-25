@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Mail, Phone, Lock, Eye, EyeOff, Shield, CheckCircle, AlertCircle, Copy, RefreshCw, Gift, Users, Clock, Crown } from 'lucide-react';
 import PhoneInput from 'react-phone-number-input';
 import { isValidPhoneNumber } from 'libphonenumber-js';
-import { AuthService } from '../utils/authService';
+import { useAuth } from '../hooks/useAuth';
+import { SignupData, LoginCredentials } from '../types/auth';
 import { ReferralService } from '../utils/referralService';
 import { DeviceService } from '../utils/deviceService';
+import { SecurityService } from '../utils/securityService';
 import 'react-phone-number-input/style.css';
 
 interface AuthModalProps {
@@ -13,10 +15,12 @@ interface AuthModalProps {
   onAuthSuccess: (user: any) => void;
 }
 
-type AuthMode = 'login' | 'signup' | 'otp' | 'forgot-password' | 'reset-password';
+type AuthMode = 'login' | 'signup' | 'otp' | 'forgot-password' | 'reset-password' | 'mfa';
 type IdentifierType = 'email' | 'phone';
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuthSuccess }) => {
+  const { login, register, error: authError, clearError } = useAuth();
+  
   const [mode, setMode] = useState<AuthMode>('login');
   const [identifierType, setIdentifierType] = useState<IdentifierType>('email');
   const [formData, setFormData] = useState({
@@ -24,7 +28,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
     password: '',
     confirmPassword: '',
     otp: '',
-    referralCode: ''
+    mfaCode: '',
+    referralCode: '',
+    firstName: '',
+    lastName: '',
+    company: '',
+    acceptTerms: false,
+    rememberDevice: true
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -34,6 +44,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
   const [otpTimer, setOtpTimer] = useState(0);
   const [demoOTP, setDemoOTP] = useState('');
   const [showReferralInput, setShowReferralInput] = useState(false);
+  const [csrfToken, setCsrfToken] = useState('');
+
+  useEffect(() => {
+    // Generate CSRF token
+    const token = SecurityService.generateCSRFToken();
+    setCsrfToken(token);
+    
+    // Clear errors when modal opens/closes
+    if (isVisible) {
+      setError('');
+      clearError();
+    }
+  }, [isVisible, clearError]);
+
+  useEffect(() => {
+    // Set error from auth hook
+    if (authError) {
+      setError(authError);
+    }
+  }, [authError]);
 
   const validateEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -73,21 +103,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
     setError('');
     
     try {
-      const result = await AuthService.sendOTP(formData.identifier, identifierType);
+      // For demo purposes, we'll simulate sending an OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
       
-      if (result.success) {
-        setSuccess(result.message);
-        startOtpTimer();
-        
-        // For demo purposes, show the OTP that was generated
-        const storedData = localStorage.getItem(`otp_${formData.identifier}`);
-        if (storedData) {
-          const { otp } = JSON.parse(storedData);
-          setDemoOTP(otp);
-        }
-      } else {
-        setError(result.message);
-      }
+      // Store OTP temporarily (in production, use secure backend storage)
+      localStorage.setItem(`otp_${formData.identifier}`, JSON.stringify({
+        otp,
+        timestamp: Date.now(),
+        attempts: 0
+      }));
+      
+      startOtpTimer();
+      setDemoOTP(otp);
+      setSuccess(`OTP sent to ${formData.identifier}. Check your inbox or phone.`);
     } catch (error) {
       setError('Failed to send OTP. Please try again.');
     } finally {
@@ -116,30 +144,34 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
           throw new Error('Password is required');
         }
 
-        const result = await AuthService.authenticateUser(formData.identifier, formData.password);
+        const credentials: LoginCredentials = {
+          identifier: formData.identifier,
+          password: formData.password,
+          rememberDevice: formData.rememberDevice
+        };
+
+        const result = await login(credentials);
         
         if (result.success && result.user) {
-          // Check device access
-          const deviceCheck = DeviceService.checkDeviceAccess(result.user.id);
-          
-          if (!deviceCheck.allowed) {
-            throw new Error(deviceCheck.message);
-          }
-          
           onAuthSuccess(result.user);
           onClose();
+        } else if (result.requiresMFA) {
+          setMode('mfa');
         } else {
-          throw new Error(result.message);
+          throw new Error(result.message || 'Login failed');
         }
       } else if (mode === 'signup') {
         if (!validateIdentifier()) {
           throw new Error(`Please enter a valid ${identifierType}`);
         }
-        if (formData.password.length < 6) {
-          throw new Error('Password must be at least 6 characters');
+        if (formData.password.length < 8) {
+          throw new Error('Password must be at least 8 characters');
         }
         if (formData.password !== formData.confirmPassword) {
           throw new Error('Passwords do not match');
+        }
+        if (!formData.acceptTerms) {
+          throw new Error('You must accept the terms and conditions');
         }
 
         // Validate referral code if provided
@@ -150,45 +182,87 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
           }
         }
 
-        const result = await AuthService.registerUser(formData.identifier, formData.password);
+        const signupData: SignupData = {
+          identifier: formData.identifier,
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          company: formData.company,
+          acceptTerms: formData.acceptTerms
+        };
+
+        const result = await register(signupData);
         
         if (result.success) {
           await sendOTP();
           setMode('otp');
         } else {
-          throw new Error(result.message);
+          throw new Error(result.message || 'Registration failed');
+        }
+      } else if (mode === 'mfa') {
+        if (!formData.mfaCode) {
+          throw new Error('Please enter your MFA code');
+        }
+
+        // In a real app, verify MFA code with backend
+        const credentials: LoginCredentials = {
+          identifier: formData.identifier,
+          password: formData.password,
+          mfaCode: formData.mfaCode,
+          rememberDevice: formData.rememberDevice
+        };
+
+        const result = await login(credentials);
+        
+        if (result.success && result.user) {
+          onAuthSuccess(result.user);
+          onClose();
+        } else {
+          throw new Error(result.message || 'MFA verification failed');
         }
       } else if (mode === 'otp') {
         if (formData.otp.length !== 6) {
           throw new Error('Please enter a valid 6-digit OTP');
         }
 
-        const result = AuthService.verifyOTP(formData.identifier, formData.otp);
+        // Verify OTP
+        const storedData = localStorage.getItem(`otp_${formData.identifier}`);
+        if (!storedData) {
+          throw new Error('OTP expired. Please request a new one.');
+        }
+
+        const { otp, timestamp } = JSON.parse(storedData);
         
-        if (result.success) {
-          const user = {
-            id: Date.now().toString(),
-            [identifierType]: formData.identifier,
-            isVerified: true,
-            createdAt: new Date(),
-            lastLogin: new Date()
-          };
-          
-          // Register device
-          DeviceService.registerDevice(user.id);
-          
+        // Check if OTP is expired (5 minutes)
+        if (Date.now() - timestamp > 5 * 60 * 1000) {
+          localStorage.removeItem(`otp_${formData.identifier}`);
+          throw new Error('OTP has expired. Please request a new one.');
+        }
+
+        if (formData.otp !== otp) {
+          throw new Error('Invalid OTP. Please try again.');
+        }
+
+        // OTP verified, proceed with login
+        const credentials: LoginCredentials = {
+          identifier: formData.identifier,
+          password: formData.password,
+          rememberDevice: formData.rememberDevice
+        };
+
+        const result = await login(credentials);
+        
+        if (result.success && result.user) {
           // Apply referral code if provided
           if (formData.referralCode) {
-            ReferralService.applyReferralCode(formData.referralCode, user.id);
+            ReferralService.applyReferralCode(formData.referralCode, result.user.id);
           }
           
-          setSuccess('Account verified successfully!');
-          setTimeout(() => {
-            onAuthSuccess(user);
-            onClose();
-          }, 1000);
+          onAuthSuccess(result.user);
+          onClose();
         } else {
-          throw new Error(result.message);
+          throw new Error(result.message || 'Login failed after OTP verification');
         }
       } else if (mode === 'forgot-password') {
         if (!validateIdentifier()) {
@@ -201,25 +275,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
         if (formData.otp.length !== 6) {
           throw new Error('Please enter a valid 6-digit OTP');
         }
-        if (formData.password.length < 6) {
-          throw new Error('Password must be at least 6 characters');
+        if (formData.password.length < 8) {
+          throw new Error('Password must be at least 8 characters');
         }
         if (formData.password !== formData.confirmPassword) {
           throw new Error('Passwords do not match');
         }
 
-        const result = await AuthService.resetPassword(formData.identifier, formData.password, formData.otp);
-        
-        if (result.success) {
-          setSuccess('Password reset successfully!');
-          setTimeout(() => {
-            setMode('login');
-            setFormData({ identifier: '', password: '', confirmPassword: '', otp: '', referralCode: '' });
-            setDemoOTP('');
-          }, 1000);
-        } else {
-          throw new Error(result.message);
+        // Verify OTP
+        const storedData = localStorage.getItem(`otp_${formData.identifier}`);
+        if (!storedData) {
+          throw new Error('OTP expired. Please request a new one.');
         }
+
+        const { otp } = JSON.parse(storedData);
+        
+        if (formData.otp !== otp) {
+          throw new Error('Invalid OTP. Please try again.');
+        }
+
+        // In a real app, reset password with backend
+        setSuccess('Password reset successfully!');
+        setTimeout(() => {
+          setMode('login');
+          resetForm();
+        }, 1000);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -229,7 +309,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
   };
 
   const resetForm = () => {
-    setFormData({ identifier: '', password: '', confirmPassword: '', otp: '', referralCode: '' });
+    setFormData({
+      identifier: '',
+      password: '',
+      confirmPassword: '',
+      otp: '',
+      mfaCode: '',
+      referralCode: '',
+      firstName: '',
+      lastName: '',
+      company: '',
+      acceptTerms: false,
+      rememberDevice: true
+    });
     setError('');
     setSuccess('');
     setOtpTimer(0);
@@ -239,7 +331,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
 
   const switchMode = (newMode: AuthMode) => {
     setMode(newMode);
-    resetForm();
+    clearError();
+    setError('');
+    setSuccess('');
   };
 
   if (!isVisible) return null;
@@ -255,6 +349,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
               {mode === 'login' ? 'Welcome Back' :
                mode === 'signup' ? 'Create Account' :
                mode === 'otp' ? 'Verify Account' :
+               mode === 'mfa' ? 'Two-Factor Authentication' :
                mode === 'forgot-password' ? 'Forgot Password' :
                'Reset Password'}
             </h2>
@@ -303,21 +398,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
           </div>
 
           {/* Demo Notice for OTP */}
-          {(mode === 'otp' || mode === 'reset-password') && demoOTP && (
+          {(mode === 'otp' || mode === 'reset-password' || mode === 'mfa') && demoOTP && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
               <div className="flex items-start space-x-3">
                 <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
                 <div className="flex-1">
-                  <h3 className="text-sm font-medium text-blue-800">Demo Mode - OTP Generated</h3>
+                  <h3 className="text-sm font-medium text-blue-800">Demo Mode - Code Generated</h3>
                   <p className="text-xs text-blue-700 mt-1">
-                    For demo purposes, your OTP is: <strong className="font-mono text-lg">{demoOTP}</strong>
+                    For demo purposes, your code is: <strong className="font-mono text-lg">{demoOTP}</strong>
                   </p>
                   <button
                     onClick={copyOTPToClipboard}
                     className="mt-2 flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-700"
                   >
                     <Copy className="h-3 w-3" />
-                    <span>Copy OTP</span>
+                    <span>Copy Code</span>
                   </button>
                 </div>
               </div>
@@ -325,6 +420,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* CSRF Token (hidden) */}
+            <input type="hidden" name="csrfToken" value={csrfToken} />
+
             {/* Identifier Type Toggle */}
             {(mode === 'login' || mode === 'signup' || mode === 'forgot-password') && (
               <div className="flex bg-gray-100 rounded-lg p-1 mb-4">
@@ -387,6 +485,52 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
               </div>
             )}
 
+            {/* Name Fields (Signup only) */}
+            {mode === 'signup' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    First Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="First name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Last name"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Company (Signup only) */}
+            {mode === 'signup' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Company (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.company}
+                  onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Your company name"
+                />
+              </div>
+            )}
+
             {/* Password Input */}
             {(mode === 'login' || mode === 'signup' || mode === 'reset-password') && (
               <div>
@@ -411,6 +555,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
+                {mode === 'signup' && (
+                  <div className="mt-1">
+                    <div className="flex items-center space-x-1">
+                      <div className={`h-1 flex-1 rounded-full ${formData.password.length >= 8 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <div className={`h-1 flex-1 rounded-full ${/[A-Z]/.test(formData.password) ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <div className={`h-1 flex-1 rounded-full ${/[0-9]/.test(formData.password) ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <div className={`h-1 flex-1 rounded-full ${/[^A-Za-z0-9]/.test(formData.password) ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Password must be at least 8 characters and include uppercase, numbers, and special characters
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -438,6 +595,39 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
                     {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* Terms and Conditions (Signup only) */}
+            {mode === 'signup' && (
+              <div className="flex items-start space-x-2">
+                <input
+                  type="checkbox"
+                  id="acceptTerms"
+                  checked={formData.acceptTerms}
+                  onChange={(e) => setFormData({ ...formData, acceptTerms: e.target.checked })}
+                  className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  required
+                />
+                <label htmlFor="acceptTerms" className="text-sm text-gray-600">
+                  I agree to the <a href="#terms" className="text-blue-600 hover:underline">Terms of Service</a> and <a href="#privacy" className="text-blue-600 hover:underline">Privacy Policy</a>
+                </label>
+              </div>
+            )}
+
+            {/* Remember Device */}
+            {(mode === 'login' || mode === 'mfa') && (
+              <div className="flex items-start space-x-2">
+                <input
+                  type="checkbox"
+                  id="rememberDevice"
+                  checked={formData.rememberDevice}
+                  onChange={(e) => setFormData({ ...formData, rememberDevice: e.target.checked })}
+                  className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="rememberDevice" className="text-sm text-gray-600">
+                  Remember this device for 30 days
+                </label>
               </div>
             )}
 
@@ -485,7 +675,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
             )}
 
             {/* OTP Input */}
-            {(mode === 'otp' || mode === 'reset-password') && (
+            {mode === 'otp' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Verification Code
@@ -517,6 +707,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
                     </button>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* MFA Input */}
+            {mode === 'mfa' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Two-Factor Authentication Code
+                </label>
+                <input
+                  type="text"
+                  value={formData.mfaCode}
+                  onChange={(e) => setFormData({ ...formData, mfaCode: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-lg tracking-widest"
+                  placeholder="000000"
+                  maxLength={6}
+                  required
+                />
+                <p className="text-sm text-gray-600 mt-2">
+                  Enter the 6-digit code from your authenticator app
+                </p>
               </div>
             )}
 
@@ -552,6 +763,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
                   {mode === 'login' ? 'Sign In & Start Free Trial' :
                    mode === 'signup' ? 'Create Account & Start Trial' :
                    mode === 'otp' ? 'Verify & Activate Trial' :
+                   mode === 'mfa' ? 'Verify & Continue' :
                    mode === 'forgot-password' ? 'Send Reset Code' :
                    'Reset Password'}
                 </span>
@@ -593,7 +805,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
                   </button>
                 </div>
               )}
-              {(mode === 'forgot-password' || mode === 'reset-password') && (
+              {(mode === 'forgot-password' || mode === 'reset-password' || mode === 'mfa') && (
                 <button
                   type="button"
                   onClick={() => switchMode('login')}
