@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mail, Phone, Shield, Heart, Gift, Star, ExternalLink, FileText, Cookie } from 'lucide-react';
+import { Mail, Phone, Shield, Heart, Gift, Star, ExternalLink, FileText, Cookie, Keyboard } from 'lucide-react';
 import { Logo } from './Logo';
 
 interface FooterProps {
@@ -81,6 +81,11 @@ export const Footer: React.FC<FooterProps> = ({ onReferralClick, onRatingClick }
             <div className="flex items-center space-x-2 text-green-400 bg-green-400/10 px-4 py-2 rounded-full border border-green-400/20">
               <Shield className="h-5 w-5" />
               <span className="text-sm font-medium">100% Secure & Private</span>
+            </div>
+            
+            <div className="flex items-center space-x-2 text-blue-400 bg-blue-400/10 px-4 py-2 rounded-full border border-blue-400/20">
+              <Keyboard className="h-5 w-5" />
+              <span className="text-sm font-medium">Keyboard Shortcuts</span>
             </div>
           </div>
         </div>
@@ -220,6 +225,17 @@ export const Footer: React.FC<FooterProps> = ({ onReferralClick, onRatingClick }
                     <span>Rate Our App</span>
                   </button>
                 )}
+                <button
+                  onClick={() => {
+                    // Trigger the keyboard shortcuts modal
+                    const event = new KeyboardEvent('keydown', { key: '?' });
+                    window.dispatchEvent(event);
+                  }}
+                  className="flex items-center space-x-3 text-slate-300 hover:text-cyan-400 transition-colors"
+                >
+                  <Keyboard className="h-5 w-5 text-blue-400" />
+                  <span>Keyboard Shortcuts</span>
+                </button>
               </div>
             </div>
           </div>

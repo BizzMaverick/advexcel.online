@@ -5,7 +5,8 @@ import {
   Activity,
   Download,
   Upload,
-  Plus
+  Plus,
+  Keyboard
 } from 'lucide-react';
 import { Logo } from './Logo';
 
@@ -36,7 +37,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onClick: onCreateSheetClick,
       color: 'text-green-600 bg-green-100',
       description: 'Create a new Excel sheet with templates',
-      enabled: true
+      enabled: true,
+      shortcut: 'Ctrl+N'
     },
     {
       id: 'import',
@@ -45,7 +47,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onClick: onImportClick,
       color: 'text-cyan-600 bg-cyan-100',
       description: 'Import Excel, CSV, or other data files',
-      enabled: true
+      enabled: true,
+      shortcut: 'Ctrl+I'
     },
     {
       id: 'analytics',
@@ -54,7 +57,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onClick: onAnalyticsClick,
       color: 'text-blue-600 bg-blue-100',
       description: 'Data insights, trends, charts, and correlations',
-      enabled: isDataLoaded
+      enabled: isDataLoaded,
+      shortcut: 'Ctrl+Shift+A'
     },
     {
       id: 'pivot',
@@ -63,7 +67,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onClick: onPivotTableClick,
       color: 'text-purple-600 bg-purple-100',
       description: 'Create and manage pivot tables',
-      enabled: isDataLoaded
+      enabled: isDataLoaded,
+      shortcut: 'Ctrl+Shift+P'
     },
     {
       id: 'export',
@@ -72,7 +77,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onClick: onExportClick,
       color: 'text-orange-600 bg-orange-100',
       description: 'Export to various formats',
-      enabled: isDataLoaded
+      enabled: isDataLoaded,
+      shortcut: 'Ctrl+E'
     }
   ];
 
@@ -131,8 +137,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     
                     {isExpanded && (
                       <div className="flex-1 text-left">
-                        <div className={`font-medium ${isDisabled ? 'text-slate-400' : 'text-slate-900'}`}>
-                          {item.label}
+                        <div className="flex items-center justify-between">
+                          <div className={`font-medium ${isDisabled ? 'text-slate-400' : 'text-slate-900'}`}>
+                            {item.label}
+                          </div>
+                          {item.shortcut && (
+                            <span className="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-600 font-mono">
+                              {item.shortcut}
+                            </span>
+                          )}
                         </div>
                         <div className={`text-xs ${isDisabled ? 'text-slate-300' : 'text-slate-500'}`}>
                           {item.description}
@@ -148,13 +161,57 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {/* Tooltip for collapsed state */}
                   {!isExpanded && (
                     <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 px-3 py-2 bg-slate-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
-                      {item.label}
+                      <div className="flex flex-col">
+                        <span>{item.label}</span>
+                        {item.shortcut && (
+                          <span className="text-xs text-slate-300 mt-1">{item.shortcut}</span>
+                        )}
+                      </div>
                       <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-slate-900 rotate-45"></div>
                     </div>
                   )}
                 </div>
               );
             })}
+
+            {/* Keyboard Shortcuts Help */}
+            <div className="relative group mt-6">
+              <button
+                onClick={() => {
+                  // Trigger the keyboard shortcuts modal
+                  const event = new KeyboardEvent('keydown', { key: '?' });
+                  window.dispatchEvent(event);
+                }}
+                className="w-full flex items-center space-x-3 px-3 py-3 rounded-lg hover:bg-slate-50 hover:shadow-md cursor-pointer transition-all duration-200"
+              >
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-gray-600 bg-gray-100 transition-all duration-200 group-hover:scale-110">
+                  <Keyboard className="h-5 w-5" />
+                </div>
+                
+                {isExpanded && (
+                  <div className="flex-1 text-left">
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium text-slate-900">Keyboard Shortcuts</div>
+                      <span className="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-600 font-mono">?</span>
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      View all available keyboard shortcuts
+                    </div>
+                  </div>
+                )}
+              </button>
+              
+              {/* Tooltip for collapsed state */}
+              {!isExpanded && (
+                <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 px-3 py-2 bg-slate-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                  <div className="flex flex-col">
+                    <span>Keyboard Shortcuts</span>
+                    <span className="text-xs text-slate-300 mt-1">Press ?</span>
+                  </div>
+                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-slate-900 rotate-45"></div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -164,7 +221,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="text-center">
               <div className="text-xs text-slate-500 mb-1">Excel Pro AI</div>
               <div className="text-xs text-slate-400">Advanced Analytics Suite</div>
-              <div className="text-xs text-cyan-600 mt-1">Use prompts for Excel functions</div>
+              <div className="text-xs text-cyan-600 mt-1">Press ? for keyboard shortcuts</div>
             </div>
           </div>
         )}

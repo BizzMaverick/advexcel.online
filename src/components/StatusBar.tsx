@@ -1,5 +1,6 @@
 import React from 'react';
 import { Cell } from '../types/spreadsheet';
+import { Keyboard } from 'lucide-react';
 
 interface StatusBarProps {
   selectedCell?: string;
@@ -32,13 +33,19 @@ export const StatusBar: React.FC<StatusBarProps> = ({ selectedCell, cell, calcul
         )}
       </div>
 
-      {calculations && (
-        <div className="flex items-center space-x-4">
-          <span>Sum: <strong>{calculations.sum.toFixed(2)}</strong></span>
-          <span>Count: <strong>{calculations.count}</strong></span>
-          <span>Average: <strong>{calculations.average.toFixed(2)}</strong></span>
-        </div>
-      )}
+      <div className="flex items-center space-x-4">
+        {calculations && (
+          <>
+            <span>Sum: <strong>{calculations.sum.toFixed(2)}</strong></span>
+            <span>Count: <strong>{calculations.count}</strong></span>
+            <span>Average: <strong>{calculations.average.toFixed(2)}</strong></span>
+          </>
+        )}
+        <span className="flex items-center text-blue-600">
+          <Keyboard className="h-3 w-3 mr-1" />
+          <span>Press <kbd className="px-1 py-0.5 bg-gray-200 rounded text-gray-800 font-mono text-xs">?</kbd> for keyboard shortcuts</span>
+        </span>
+      </div>
     </div>
   );
 };

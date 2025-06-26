@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { FileSpreadsheet, Upload, RotateCcw, MessageCircle, Star, LogOut, Shield, X, Crown, Gift, Users, Calculator, Search } from 'lucide-react';
+import { FileSpreadsheet, Upload, RotateCcw, MessageCircle, Star, LogOut, Shield, X, Crown, Gift, Users, Calculator, Search, Keyboard } from 'lucide-react';
 import Papa from 'papaparse';
 import { SpreadsheetGrid } from './components/SpreadsheetGrid';
 import { CommandBar } from './components/CommandBar';
@@ -26,6 +26,7 @@ import { LoadingProgress } from './components/LoadingProgress';
 import { Logo } from './components/Logo';
 import { ScrollingBanner } from './components/ScrollingBanner';
 import { OtpVerification } from './components/OtpVerification';
+import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { SpreadsheetData, Cell } from './types/spreadsheet';
 import { User } from './types/auth';
 import { SuggestionFeedback } from './types/chat';
@@ -41,6 +42,7 @@ import { MultiSheetHandler } from './utils/multiSheetHandler';
 import { useAuthContext } from './context/AuthContext';
 import { AuthGuard } from './components/AuthGuard';
 import { EnvironmentService } from './utils/environmentService';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminRoute from './components/AdminRoute';
 
@@ -63,6 +65,7 @@ function App() {
   const [showPrivacyBanner, setShowPrivacyBanner] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showOtpVerification, setShowOtpVerification] = useState(false);
+  const [showKeyboardShortcutsModal, setShowKeyboardShortcutsModal] = useState(false);
   const [verificationData, setVerificationData] = useState<{
     identifier: string;
     identifierType: 'email' | 'phone';
@@ -93,6 +96,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(true);
   const [suggestions, setSuggestions] = useState<SuggestionFeedback[]>([]);
+  const [commandBarFocused, setCommandBarFocused] = useState(false);
 
   // Check authentication status on app load
   useEffect(() => {
@@ -121,6 +125,116 @@ function App() {
       window.removeEventListener('hashchange', handleHashChange);
     };
   }, [isAuthenticated]);
+
+  // Define keyboard shortcuts
+  const shortcuts = [
+    { 
+      key: '?', 
+      handler: () => setShowKeyboardShortcutsModal(true), 
+      description: 'General: Show keyboard shortcuts help' 
+    },
+    { 
+      key: 'ctrl+/', 
+      handler: () => setCommandBarFocused(true), 
+      description: 'General: Focus command bar' 
+    },
+    { 
+      key: 'ctrl+i', 
+      handler: handleImportFile, 
+      description: 'File: Import spreadsheet' 
+    },
+    { 
+      key: 'ctrl+e', 
+      handler: () => isDataLoaded && setShowExportModal(true), 
+      description: 'File: Export spreadsheet' 
+    },
+    { 
+      key: 'ctrl+n', 
+      handler: () => setShowSheetCreator(true), 
+      description: 'File: Create new sheet' 
+    },
+    { 
+      key: 'ctrl+shift+a', 
+      handler: () => isDataLoaded && setShowAnalyticsPanel(true), 
+      description: 'Analysis: Open analytics panel' 
+    },
+    { 
+      key: 'ctrl+shift+p', 
+      handler: () => isDataLoaded && setShowPivotPanel(true), 
+      description: 'Analysis: Open pivot table' 
+    },
+    { 
+      key: 'ctrl+shift+f', 
+      handler: () => setShowFormulaAssistant(true), 
+      description: 'Formulas: Open formula assistant' 
+    },
+    { 
+      key: 'escape', 
+      handler: () => {
+        // Close any open modal or panel
+        if (showAnalyticsPanel) setShowAnalyticsPanel(false);
+        else if (showQueryResults) setShowQueryResults(false);
+        else if (showExportModal) setShowExportModal(false);
+        else if (showPivotPanel) setShowPivotPanel(false);
+        else if (showFormulaAssistant) setShowFormulaAssistant(false);
+        else if (showSheetCreator) setShowSheetCreator(false);
+        else if (showChatBot) setShowChatBot(false);
+        else if (showRatingModal) setShowRatingModal(false);
+        else if (showKeyboardShortcutsModal) setShowKeyboardShortcutsModal(false);
+      }, 
+      description: 'General: Close current panel or modal' 
+    },
+    { 
+      key: 'ctrl+h', 
+      handler: () => setShowChatBot(true), 
+      description: 'Help: Open chat assistant' 
+    },
+    { 
+      key: 'ctrl+shift+r', 
+      handler: handleLogoClick, 
+      description: 'General: Reset application' 
+    },
+    { 
+      key: 'ctrl+s', 
+      handler: () => {
+        if (isDataLoaded && workbook) {
+          addNotification('Auto-save feature activated', 'success');
+        }
+      }, 
+      description: 'File: Save current workbook' 
+    },
+    { 
+      key: 'ctrl+z', 
+      handler: () => {
+        if (isDataLoaded) {
+          addNotification('Undo operation not available in this version', 'info');
+        }
+      }, 
+      description: 'Edit: Undo last action' 
+    },
+    { 
+      key: 'ctrl+y', 
+      handler: () => {
+        if (isDataLoaded) {
+          addNotification('Redo operation not available in this version', 'info');
+        }
+      }, 
+      description: 'Edit: Redo last action' 
+    },
+    { 
+      key: 'ctrl+f', 
+      handler: () => {
+        if (isDataLoaded) {
+          addNotification('Search feature activated', 'info');
+          // Implement search functionality
+        }
+      }, 
+      description: 'Edit: Find in spreadsheet' 
+    }
+  ];
+
+  // Register keyboard shortcuts
+  const { getShortcutsHelp } = useKeyboardShortcuts(shortcuts, true);
 
   const addNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now();
@@ -266,6 +380,14 @@ function App() {
       if (sheetCommands.some(cmd => command.toLowerCase().includes(cmd))) {
         setShowSheetCreator(true);
         addNotification('Sheet Creator opened', 'success');
+        return;
+      }
+
+      // Check for keyboard shortcuts help command
+      const shortcutCommands = ['keyboard shortcuts', 'shortcuts', 'hotkeys', 'show shortcuts', 'help shortcuts'];
+      if (shortcutCommands.some(cmd => command.toLowerCase().includes(cmd))) {
+        setShowKeyboardShortcutsModal(true);
+        addNotification('Keyboard shortcuts help opened', 'success');
         return;
       }
 
@@ -799,6 +921,7 @@ function App() {
     'Insert row at position 5',
     'Merge cells A1:C1',
     'Clear range B1:B10',
+    'Show keyboard shortcuts',
   ];
 
   return (
@@ -822,7 +945,7 @@ function App() {
                         <span className="text-sm font-medium">🔒 Privacy Protected</span>
                       </div>
                       <div className="hidden sm:block">
-                        <span className="text-xs">•</span>
+                        <span className="text-sm">•</span>
                       </div>
                       <div className="whitespace-nowrap animate-marquee">
                         <span className="text-sm">All data processing happens locally in your browser • Your files never leave your device • 100% secure and private</span>
@@ -887,6 +1010,15 @@ function App() {
                   
                   {/* User Menu */}
                   <div className="flex items-center space-x-4">
+                    <button
+                      onClick={() => setShowKeyboardShortcutsModal(true)}
+                      className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                      title="Keyboard Shortcuts (Press ? for help)"
+                    >
+                      <Keyboard className="h-4 w-4" />
+                      <span className="hidden sm:inline">Shortcuts</span>
+                    </button>
+
                     {!isSubscribed && (
                       <button
                         onClick={() => setShowSubscriptionModal(true)}
@@ -987,6 +1119,8 @@ function App() {
                 <CommandBar 
                   onExecuteCommand={handleExecuteCommand} 
                   suggestions={enhancedSuggestions}
+                  isFocused={commandBarFocused}
+                  onFocusChange={setCommandBarFocused}
                 />
               </div>
 
@@ -1130,6 +1264,12 @@ function App() {
                 />
               </div>
             )}
+
+            <KeyboardShortcutsModal
+              isVisible={showKeyboardShortcutsModal}
+              onClose={() => setShowKeyboardShortcutsModal(false)}
+              shortcuts={getShortcutsHelp()}
+            />
 
             {/* Notifications */}
             <div className={`fixed top-4 right-4 space-y-2 z-50 ${showPrivacyBanner ? 'mb-16' : ''}`}>

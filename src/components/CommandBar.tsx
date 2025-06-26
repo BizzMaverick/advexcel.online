@@ -4,9 +4,16 @@ import { Search, Terminal, Zap, BarChart3, Calculator, FileSpreadsheet, ArrowRig
 interface CommandBarProps {
   onExecuteCommand: (command: string) => void;
   suggestions?: string[];
+  isFocused?: boolean;
+  onFocusChange?: (focused: boolean) => void;
 }
 
-export const CommandBar: React.FC<CommandBarProps> = ({ onExecuteCommand, suggestions = [] }) => {
+export const CommandBar: React.FC<CommandBarProps> = ({ 
+  onExecuteCommand, 
+  suggestions = [],
+  isFocused = false,
+  onFocusChange
+}) => {
   const [command, setCommand] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -97,6 +104,7 @@ export const CommandBar: React.FC<CommandBarProps> = ({ onExecuteCommand, sugges
       setIsExpanded(false);
       setShowSuggestions(false);
       setHistoryIndex(-1);
+      if (onFocusChange) onFocusChange(false);
     }
   };
 
@@ -104,6 +112,7 @@ export const CommandBar: React.FC<CommandBarProps> = ({ onExecuteCommand, sugges
     setCommand(suggestion);
     setShowSuggestions(false);
     inputRef.current?.focus();
+    if (onFocusChange) onFocusChange(true);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -129,10 +138,17 @@ export const CommandBar: React.FC<CommandBarProps> = ({ onExecuteCommand, sugges
   };
 
   useEffect(() => {
-    if (isExpanded && inputRef.current) {
+    if ((isExpanded || isFocused) && inputRef.current) {
       inputRef.current.focus();
     }
-  }, [isExpanded]);
+  }, [isExpanded, isFocused]);
+
+  // Focus the input when isFocused prop changes to true
+  useEffect(() => {
+    if (isFocused && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isFocused]);
 
   const filteredSuggestions = getFilteredSuggestions();
 
@@ -140,7 +156,7 @@ export const CommandBar: React.FC<CommandBarProps> = ({ onExecuteCommand, sugges
     <div className="relative">
       <div className={`
         transition-all duration-300 ease-in-out bg-white rounded-lg shadow-lg border-2
-        ${isExpanded ? 'border-cyan-500' : 'border-slate-200 hover:border-slate-300'}
+        ${isExpanded || isFocused ? 'border-cyan-500' : 'border-slate-200 hover:border-slate-300'}
       `}>
         <form onSubmit={handleSubmit} className="flex items-center">
           <div className="flex items-center px-4 py-3 space-x-3">
@@ -162,14 +178,16 @@ export const CommandBar: React.FC<CommandBarProps> = ({ onExecuteCommand, sugges
               onFocus={() => {
                 setIsExpanded(true);
                 setShowSuggestions(command.length > 0);
+                if (onFocusChange) onFocusChange(true);
               }}
               onBlur={() => {
                 setTimeout(() => {
                   setIsExpanded(false);
                   setShowSuggestions(false);
+                  if (onFocusChange) onFocusChange(false);
                 }, 200);
               }}
-              placeholder="Enter natural language query or Excel command..."
+              placeholder="Enter natural language query or Excel command... (Ctrl+/ to focus)"
               className="w-full px-4 py-3 text-sm border-none outline-none bg-transparent placeholder-slate-400"
             />
           </div>
