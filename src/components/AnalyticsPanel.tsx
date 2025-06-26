@@ -4,6 +4,7 @@ import { TrendingUp, BarChart3, PieChart as PieIcon, Activity, Target, AlertTria
 import { DataAnalytics, ChartConfig } from '../types/analytics';
 import { DataAnalyticsEngine } from '../utils/dataAnalytics';
 import { SpreadsheetData } from '../types/spreadsheet';
+import { NaturalLanguageProcessor } from '../utils/naturalLanguageProcessor';
 
 interface AnalyticsPanelProps {
   data: SpreadsheetData;
@@ -13,9 +14,12 @@ interface AnalyticsPanelProps {
 
 export const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ data, isVisible, onClose }) => {
   const [analytics, setAnalytics] = useState<DataAnalytics | null>(null);
-  const [activeTab, setActiveTab] = useState<'summary' | 'trends' | 'correlations' | 'outliers' | 'charts'>('summary');
+  const [activeTab, setActiveTab] = useState<'summary' | 'trends' | 'correlations' | 'outliers' | 'charts' | 'nlp'>('summary');
   const [chartConfig, setChartConfig] = useState<ChartConfig | null>(null);
   const [loading, setLoading] = useState(false);
+  const [nlpQuery, setNlpQuery] = useState('');
+  const [nlpResults, setNlpResults] = useState<any[] | null>(null);
+  const [nlpMessage, setNlpMessage] = useState('');
 
   useEffect(() => {
     if (isVisible && Object.keys(data.cells).length > 0) {
@@ -44,6 +48,27 @@ export const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ data, isVisible,
       setActiveTab('charts');
     } catch (error) {
       console.error('Error generating chart:', error);
+    }
+  };
+
+  const handleNlpQuery = () => {
+    if (!nlpQuery.trim()) return;
+    
+    try {
+      const processor = new NaturalLanguageProcessor(data.cells);
+      const result = processor.processQuery(nlpQuery);
+      
+      if (result.success) {
+        setNlpResults(result.data);
+        setNlpMessage(result.message);
+      } else {
+        setNlpResults([]);
+        setNlpMessage(result.message);
+      }
+    } catch (error) {
+      console.error('Error processing NLP query:', error);
+      setNlpResults([]);
+      setNlpMessage('Error processing your query. Please try again.');
     }
   };
 
@@ -79,6 +104,30 @@ export const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ data, isVisible,
             </LineChart>
           </ResponsiveContainer>
         );
+      case 'pie':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <PieChart>
+              <Pie
+                data={chartData}
+                cx="50%"
+                cy="50%"
+                labelLine={true}
+                outerRadius={150}
+                fill="#8884d8"
+                dataKey={yAxis}
+                nameKey={xAxis}
+                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+              >
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={colors?.[index % (colors?.length || 1)] || `hsl(${index * 45 % 360}, 70%, 60%)`} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        );
       case 'scatter':
         return (
           <ResponsiveContainer width="100%" height={400}>
@@ -94,6 +143,85 @@ export const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ data, isVisible,
       default:
         return <div className="text-center text-gray-500">Chart type not supported</div>;
     }
+  };
+
+  const renderNlpResults = () => {
+    if (!nlpResults) return null;
+    if (nlpResults.length === 0) {
+      return (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800">
+          No results found for your query.
+        </div>
+      );
+    }
+
+    // Check if this is a single-row result (like an aggregation)
+    if (nlpResults.length === 1 && Object.keys(nlpResults[0]).some(key => key.includes('sum_') || key.includes('avg_'))) {
+      return (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h3 className="font-medium text-blue-900 mb-3">Results</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {Object.entries(nlpResults[0]).map(([key, value]) => (
+              <div key={key} className="bg-white p-3 rounded-lg shadow-sm">
+                <div className="text-sm text-gray-600">{key}</div>
+                <div className="text-lg font-semibold text-blue-900">
+                  {typeof value === 'number' ? value.toLocaleString(undefined, {
+                    maximumFractionDigits: 2
+                  }) : String(value)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // For regular result sets
+    if (nlpResults.length > 0) {
+      const columns = Object.keys(nlpResults[0]);
+      
+      return (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                {columns.map((column, index) => (
+                  <th
+                    key={index}
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    {column}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {nlpResults.slice(0, 100).map((row, rowIndex) => (
+                <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                  {columns.map((column, colIndex) => (
+                    <td
+                      key={colIndex}
+                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                    >
+                      {typeof row[column] === 'number' 
+                        ? row[column].toLocaleString(undefined, { maximumFractionDigits: 2 }) 
+                        : String(row[column] || '')}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {nlpResults.length > 100 && (
+            <div className="text-center py-2 text-sm text-gray-500">
+              Showing first 100 of {nlpResults.length} results
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return null;
   };
 
   if (!isVisible) return null;
@@ -126,6 +254,7 @@ export const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ data, isVisible,
             { id: 'correlations', label: 'Correlations', icon: Target },
             { id: 'outliers', label: 'Outliers', icon: AlertTriangle },
             { id: 'charts', label: 'Charts', icon: BarChart3 },
+            { id: 'nlp', label: 'Natural Language', icon: Activity },
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -324,7 +453,7 @@ export const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ data, isVisible,
                 <div className="space-y-6">
                   <div className="bg-white border border-gray-200 rounded-lg p-4">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Generate Chart</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
                       {analytics.summary.numericColumns.length > 0 && (
                         <>
                           <button
@@ -342,6 +471,13 @@ export const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ data, isVisible,
                             <span>Line Chart</span>
                           </button>
                           <button
+                            onClick={() => generateChart('pie', analytics.summary.numericColumns[0], analytics.summary.numericColumns[1] || analytics.summary.numericColumns[0])}
+                            className="flex items-center space-x-2 p-3 border border-gray-300 rounded-lg hover:bg-gray-50"
+                          >
+                            <PieIcon className="h-5 w-5 text-orange-600" />
+                            <span>Pie Chart</span>
+                          </button>
+                          <button
                             onClick={() => generateChart('scatter', analytics.summary.numericColumns[0], analytics.summary.numericColumns[1] || analytics.summary.numericColumns[0])}
                             className="flex items-center space-x-2 p-3 border border-gray-300 rounded-lg hover:bg-gray-50"
                           >
@@ -357,6 +493,60 @@ export const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ data, isVisible,
                         {renderChart()}
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'nlp' && (
+                <div className="space-y-6">
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Natural Language Query</h3>
+                    <div className="mb-4">
+                      <p className="text-sm text-gray-600 mb-2">
+                        Ask questions about your data in plain English. For example:
+                      </p>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {[
+                          "Show sales by region",
+                          "Find top 5 products by revenue",
+                          "What's the average salary?",
+                          "Compare north vs south region",
+                          "Show data for January 2024"
+                        ].map((example, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setNlpQuery(example)}
+                            className="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded-full hover:bg-blue-100"
+                          >
+                            {example}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex space-x-2">
+                        <input
+                          type="text"
+                          value={nlpQuery}
+                          onChange={(e) => setNlpQuery(e.target.value)}
+                          placeholder="Ask a question about your data..."
+                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <button
+                          onClick={handleNlpQuery}
+                          disabled={!nlpQuery.trim()}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Ask
+                        </button>
+                      </div>
+                    </div>
+
+                    {nlpMessage && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                        <p className="text-sm text-blue-800">{nlpMessage}</p>
+                      </div>
+                    )}
+
+                    {renderNlpResults()}
                   </div>
                 </div>
               )}
