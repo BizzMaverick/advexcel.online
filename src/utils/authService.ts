@@ -2,7 +2,6 @@ import { DeviceService } from './deviceService';
 import { SecurityService } from './securityService';
 import { AuditService } from './auditService';
 import { RateLimitService } from './rateLimitService';
-import { SMSService } from './smsService';
 import { 
   User, 
   AuthTokens, 
@@ -16,9 +15,10 @@ import {
 } from '../types/auth';
 import { JWTService } from './jwtService';
 import { CryptoService } from './cryptoService';
+import { EnvironmentService } from './environmentService';
 
 export class AuthService {
-  private static readonly API_BASE = process.env.VITE_API_BASE || 'https://api.excelanalyzerpro.com';
+  private static readonly API_BASE = EnvironmentService.getApiBaseUrl();
   private static readonly TOKEN_STORAGE_KEY = 'auth_tokens';
   private static readonly USER_STORAGE_KEY = 'user_data';
   private static readonly SESSION_STORAGE_KEY = 'session_data';
@@ -51,96 +51,134 @@ export class AuthService {
         success: false // Will update if successful
       });
 
-      // Validate credentials
-      const user = await this.validateCredentials(credentials.identifier, credentials.password);
-      if (!user) {
-        await this.handleFailedLogin(credentials.identifier, ipAddress);
-        throw new Error('Invalid email or password');
-      }
+      try {
+        // Try to use API endpoint first
+        const response = await fetch(`${this.API_BASE}/api/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(credentials)
+        });
 
-      // Check if account is locked
-      if (user.security.lockedUntil && new Date() < user.security.lockedUntil) {
-        throw new Error('Account is temporarily locked due to multiple failed attempts. Please try again later.');
-      }
-
-      // Check if account is verified
-      if (!user.isVerified) {
-        // Generate and send new OTP for verification
-        const otp = CryptoService.generateOTP();
-        await this.storeOTP(credentials.identifier, otp);
-        
-        if (credentials.identifier.includes('@')) {
-          // For demo, store in localStorage to display in UI
-          localStorage.setItem(`otp_${credentials.identifier}`, JSON.stringify({
-            code: otp,
-            timestamp: Date.now(),
-            attempts: 0
-          }));
-        } else {
-          // Send SMS with OTP
-          await SMSService.sendOTP(credentials.identifier, otp);
+        if (response.ok) {
+          const result = await response.json();
+          
+          if (result.success && result.user && result.tokens) {
+            // Store tokens securely
+            await this.storeTokensSecurely(result.tokens);
+            await this.storeUserData(result.user);
+            
+            // Success audit log
+            await AuditService.log({
+              action: 'login_success',
+              resource: 'auth',
+              details: { userId: result.user.id },
+              ipAddress,
+              success: true
+            });
+            
+            return result;
+          } else {
+            throw new Error(result.message || 'Login failed');
+          }
         }
         
-        throw new Error('Account not verified. A new verification code has been sent to your email/phone.');
-      }
+        // If API call fails, fall back to local authentication
+        throw new Error('API unavailable, using local authentication');
+      } catch (apiError) {
+        console.warn('API login failed, using local authentication:', apiError);
+        
+        // Validate credentials locally
+        const user = await this.validateCredentials(credentials.identifier, credentials.password);
+        if (!user) {
+          await this.handleFailedLogin(credentials.identifier, ipAddress);
+          throw new Error('Invalid email or password');
+        }
 
-      // Check MFA requirement
-      if (user.security.mfaEnabled && !credentials.mfaCode) {
+        // Check if account is locked
+        if (user.security.lockedUntil && new Date() < user.security.lockedUntil) {
+          throw new Error('Account is temporarily locked due to multiple failed attempts. Please try again later.');
+        }
+
+        // Check if account is verified
+        if (!user.isVerified) {
+          // Generate and send new OTP for verification
+          const otp = CryptoService.generateOTP();
+          await this.storeOTP(credentials.identifier, otp);
+          
+          if (credentials.identifier.includes('@')) {
+            // For demo, store in localStorage to display in UI
+            localStorage.setItem(`otp_${credentials.identifier}`, JSON.stringify({
+              code: otp,
+              timestamp: Date.now(),
+              attempts: 0
+            }));
+          } else {
+            // Send SMS with OTP - this would call the API in production
+            console.log(`[DEMO] SMS OTP for ${credentials.identifier}: ${otp}`);
+          }
+          
+          throw new Error('Account not verified. A new verification code has been sent to your email/phone.');
+        }
+
+        // Check MFA requirement
+        if (user.security.mfaEnabled && !credentials.mfaCode) {
+          return {
+            success: false,
+            requiresMFA: true,
+            message: 'MFA code required'
+          };
+        }
+
+        // Verify MFA if provided
+        if (user.security.mfaEnabled && credentials.mfaCode) {
+          const mfaValid = await this.verifyMFA(user.id, credentials.mfaCode);
+          if (!mfaValid) {
+            throw new Error('Invalid MFA code');
+          }
+        }
+
+        // Check device trust
+        const isTrustedDevice = this.isDeviceTrusted(user, deviceFingerprint);
+        if (!isTrustedDevice && !credentials.rememberDevice) {
+          // Could implement additional verification here
+        }
+
+        // Generate tokens
+        const tokens = await JWTService.generateTokens(user);
+        
+        // Create session
+        const sessionId = await this.createSession(user.id, deviceFingerprint, ipAddress);
+
+        // Update user login info
+        await this.updateLastLogin(user.id, ipAddress);
+
+        // Add device to trusted list if requested
+        if (credentials.rememberDevice && !isTrustedDevice) {
+          await this.addTrustedDevice(user.id, deviceFingerprint, ipAddress);
+        }
+
+        // Store tokens securely
+        await this.storeTokensSecurely(tokens);
+        await this.storeUserData(user);
+
+        // Success audit log
+        await AuditService.log({
+          action: 'login_success',
+          resource: 'auth',
+          details: { userId: user.id, sessionId },
+          ipAddress,
+          success: true
+        });
+
         return {
-          success: false,
-          requiresMFA: true,
-          message: 'MFA code required'
+          success: true,
+          user,
+          tokens,
+          message: 'Login successful'
         };
       }
-
-      // Verify MFA if provided
-      if (user.security.mfaEnabled && credentials.mfaCode) {
-        const mfaValid = await this.verifyMFA(user.id, credentials.mfaCode);
-        if (!mfaValid) {
-          throw new Error('Invalid MFA code');
-        }
-      }
-
-      // Check device trust
-      const isTrustedDevice = this.isDeviceTrusted(user, deviceFingerprint);
-      if (!isTrustedDevice && !credentials.rememberDevice) {
-        // Could implement additional verification here
-      }
-
-      // Generate tokens
-      const tokens = await JWTService.generateTokens(user);
-      
-      // Create session
-      const sessionId = await this.createSession(user.id, deviceFingerprint, ipAddress);
-
-      // Update user login info
-      await this.updateLastLogin(user.id, ipAddress);
-
-      // Add device to trusted list if requested
-      if (credentials.rememberDevice && !isTrustedDevice) {
-        await this.addTrustedDevice(user.id, deviceFingerprint, ipAddress);
-      }
-
-      // Store tokens securely
-      await this.storeTokensSecurely(tokens);
-      await this.storeUserData(user);
-
-      // Success audit log
-      await AuditService.log({
-        action: 'login_success',
-        resource: 'auth',
-        details: { userId: user.id, sessionId },
-        ipAddress,
-        success: true
-      });
-
-      return {
-        success: true,
-        user,
-        tokens,
-        message: 'Login successful'
-      };
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed';
       
@@ -176,77 +214,102 @@ export class AuthService {
         throw new Error('Invalid registration data');
       }
 
-      // Check if user already exists
-      const existingUser = await this.findUserByIdentifier(signupData.identifier);
-      if (existingUser) {
-        throw new Error('An account with this email/phone already exists');
-      }
+      try {
+        // Try API endpoint first
+        const response = await fetch(`${this.API_BASE}/api/signup`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(signupData)
+        });
 
-      // Hash password
-      const hashedPassword = await CryptoService.hashPassword(signupData.password);
-
-      // Create user
-      const user: User = {
-        id: this.generateUserId(),
-        email: signupData.identifier.includes('@') ? signupData.identifier : undefined,
-        phoneNumber: !signupData.identifier.includes('@') ? signupData.identifier : undefined,
-        isVerified: false,
-        createdAt: new Date(),
-        lastLogin: new Date(),
-        role: UserRole.USER,
-        permissions: this.getDefaultPermissions(UserRole.USER),
-        profile: {
-          firstName: signupData.firstName,
-          lastName: signupData.lastName,
-          company: signupData.company,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          language: navigator.language
-        },
-        security: {
-          mfaEnabled: false,
-          trustedDevices: [],
-          lastPasswordChange: new Date(),
-          failedLoginAttempts: 0,
-          sessionTimeout: 480 // 8 hours
+        if (response.ok) {
+          const result = await response.json();
+          
+          if (result.success) {
+            return result;
+          } else {
+            throw new Error(result.message || 'Registration failed');
+          }
         }
-      };
+        
+        // If API call fails, fall back to local registration
+        throw new Error('API unavailable, using local registration');
+      } catch (apiError) {
+        console.warn('API registration failed, using local registration:', apiError);
+        
+        // Check if user already exists
+        const existingUser = await this.findUserByIdentifier(signupData.identifier);
+        if (existingUser) {
+          throw new Error('An account with this email/phone already exists');
+        }
 
-      // Store user (in production, this would be a database call)
-      await this.storeUser(user, hashedPassword);
+        // Hash password
+        const hashedPassword = await CryptoService.hashPassword(signupData.password);
 
-      // Generate and send OTP
-      const otp = CryptoService.generateOTP();
-      await this.storeOTP(signupData.identifier, otp);
-      
-      // Send OTP via SMS or email
-      if (signupData.identifier.includes('@')) {
-        // For demo, store in localStorage to display in UI
-        localStorage.setItem(`otp_${signupData.identifier}`, JSON.stringify({
-          code: otp,
-          timestamp: Date.now(),
-          attempts: 0
-        }));
-        console.log(`Email OTP for ${signupData.identifier}: ${otp}`);
-      } else {
-        // Send SMS OTP
-        await SMSService.sendOTP(signupData.identifier, otp);
+        // Create user
+        const user: User = {
+          id: this.generateUserId(),
+          email: signupData.identifier.includes('@') ? signupData.identifier : undefined,
+          phoneNumber: !signupData.identifier.includes('@') ? signupData.identifier : undefined,
+          isVerified: false,
+          createdAt: new Date(),
+          lastLogin: new Date(),
+          role: UserRole.USER,
+          permissions: this.getDefaultPermissions(UserRole.USER),
+          profile: {
+            firstName: signupData.firstName,
+            lastName: signupData.lastName,
+            company: signupData.company,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            language: navigator.language
+          },
+          security: {
+            mfaEnabled: false,
+            trustedDevices: [],
+            lastPasswordChange: new Date(),
+            failedLoginAttempts: 0,
+            sessionTimeout: 480 // 8 hours
+          }
+        };
+
+        // Store user (in production, this would be a database call)
+        await this.storeUser(user, hashedPassword);
+
+        // Generate and send OTP
+        const otp = CryptoService.generateOTP();
+        await this.storeOTP(signupData.identifier, otp);
+        
+        // Send OTP via SMS or email
+        if (signupData.identifier.includes('@')) {
+          // For demo, store in localStorage to display in UI
+          localStorage.setItem(`otp_${signupData.identifier}`, JSON.stringify({
+            code: otp,
+            timestamp: Date.now(),
+            attempts: 0
+          }));
+          console.log(`Email OTP for ${signupData.identifier}: ${otp}`);
+        } else {
+          // Send SMS OTP - this would call the API in production
+          console.log(`[DEMO] SMS OTP for ${signupData.identifier}: ${otp}`);
+        }
+
+        // Audit log
+        await AuditService.log({
+          action: 'user_registered',
+          resource: 'user',
+          details: { userId: user.id, identifier: signupData.identifier },
+          ipAddress: await this.getClientIP(),
+          success: true
+        });
+
+        return {
+          success: true,
+          user,
+          message: 'Registration successful. Please verify your account with the code sent to your email/phone.'
+        };
       }
-
-      // Audit log
-      await AuditService.log({
-        action: 'user_registered',
-        resource: 'user',
-        details: { userId: user.id, identifier: signupData.identifier },
-        ipAddress: await this.getClientIP(),
-        success: true
-      });
-
-      return {
-        success: true,
-        user,
-        message: 'Registration successful. Please verify your account with the code sent to your email/phone.'
-      };
-
     } catch (error) {
       return {
         success: false,
@@ -263,53 +326,55 @@ export class AuthService {
         throw new Error(`Too many OTP requests. Try again in ${rateLimitCheck.resetTime} seconds.`);
       }
 
-      // Generate OTP
-      const otp = CryptoService.generateOTP();
-      
-      // Store OTP
-      await this.storeOTP(identifier, otp);
-      
-      // Send OTP via appropriate channel
-      if (type === 'email') {
-        // In production, send actual email
-        console.log(`Email OTP for ${identifier}: ${otp}`);
-        // await this.sendEmailOTP(identifier, otp);
-        
-        // For demo, store in localStorage to display in UI
-        localStorage.setItem(`otp_${identifier}`, JSON.stringify({
-          code: otp,
-          timestamp: Date.now(),
-          attempts: 0
-        }));
-      } else {
-        // Send SMS with OTP
-        const smsResult = await SMSService.sendOTP(identifier, otp);
-        
-        if (!smsResult.success) {
-          throw new Error(smsResult.message);
+      try {
+        // Try API endpoint first
+        const response = await fetch(`${this.API_BASE}/api/send-otp`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ identifier, type })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          return result;
         }
         
+        // If API call fails, fall back to local OTP generation
+        throw new Error('API unavailable, using local OTP generation');
+      } catch (apiError) {
+        console.warn('API OTP sending failed, using local OTP generation:', apiError);
+        
+        // Generate OTP
+        const otp = CryptoService.generateOTP();
+        
+        // Store OTP
+        await this.storeOTP(identifier, otp);
+        
         // For demo, store in localStorage to display in UI
         localStorage.setItem(`otp_${identifier}`, JSON.stringify({
           code: otp,
           timestamp: Date.now(),
           attempts: 0
         }));
+        
+        console.log(`[DEMO] OTP for ${identifier}: ${otp}`);
+        
+        // Log OTP generation
+        await AuditService.log({
+          action: 'otp_generated',
+          resource: 'auth',
+          details: { identifier, type },
+          ipAddress: await this.getClientIP(),
+          success: true
+        });
+
+        return {
+          success: true,
+          message: `Verification code sent to your ${type === 'email' ? 'email' : 'phone'}`
+        };
       }
-
-      // Log OTP generation
-      await AuditService.log({
-        action: 'otp_generated',
-        resource: 'auth',
-        details: { identifier, type },
-        ipAddress: await this.getClientIP(),
-        success: true
-      });
-
-      return {
-        success: true,
-        message: `Verification code sent to your ${type === 'email' ? 'email' : 'phone'}`
-      };
     } catch (error) {
       return {
         success: false,
@@ -320,73 +385,104 @@ export class AuthService {
 
   static async verifyOTP(identifier: string, otp: string): Promise<{ success: boolean; message: string }> {
     try {
-      const storedData = localStorage.getItem(`otp_${identifier}`);
-      
-      if (!storedData) {
-        return {
-          success: false,
-          message: 'Verification code expired or not found. Please request a new one.'
-        };
-      }
+      try {
+        // Try API endpoint first
+        const response = await fetch(`${this.API_BASE}/api/verify-otp`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ identifier, otp })
+        });
 
-      const { code, timestamp, attempts } = JSON.parse(storedData);
-      
-      // Check if OTP is expired (5 minutes)
-      if (Date.now() - timestamp > 5 * 60 * 1000) {
-        localStorage.removeItem(`otp_${identifier}`);
-        return {
-          success: false,
-          message: 'Verification code has expired. Please request a new one.'
-        };
-      }
-
-      // Check attempts limit
-      if (attempts >= 3) {
-        localStorage.removeItem(`otp_${identifier}`);
-        return {
-          success: false,
-          message: 'Too many failed attempts. Please request a new verification code.'
-        };
-      }
-
-      // Verify OTP
-      if (otp !== code) {
-        // Increment attempts
-        localStorage.setItem(`otp_${identifier}`, JSON.stringify({
-          code,
-          timestamp,
-          attempts: attempts + 1
-        }));
+        if (response.ok) {
+          const result = await response.json();
+          
+          if (result.success) {
+            // Update user verification status
+            const user = await this.findUserByIdentifier(identifier);
+            if (user) {
+              user.isVerified = true;
+              await this.updateUser(user);
+            }
+          }
+          
+          return result;
+        }
         
+        // If API call fails, fall back to local OTP verification
+        throw new Error('API unavailable, using local OTP verification');
+      } catch (apiError) {
+        console.warn('API OTP verification failed, using local verification:', apiError);
+        
+        const storedData = localStorage.getItem(`otp_${identifier}`);
+        
+        if (!storedData) {
+          return {
+            success: false,
+            message: 'Verification code expired or not found. Please request a new one.'
+          };
+        }
+
+        const { code, timestamp, attempts } = JSON.parse(storedData);
+        
+        // Check if OTP is expired (5 minutes)
+        if (Date.now() - timestamp > 5 * 60 * 1000) {
+          localStorage.removeItem(`otp_${identifier}`);
+          return {
+            success: false,
+            message: 'Verification code has expired. Please request a new one.'
+          };
+        }
+
+        // Check attempts limit
+        if (attempts >= 3) {
+          localStorage.removeItem(`otp_${identifier}`);
+          return {
+            success: false,
+            message: 'Too many failed attempts. Please request a new verification code.'
+          };
+        }
+
+        // Verify OTP
+        if (otp !== code) {
+          // Increment attempts
+          localStorage.setItem(`otp_${identifier}`, JSON.stringify({
+            code,
+            timestamp,
+            attempts: attempts + 1
+          }));
+          
+          return {
+            success: false,
+            message: `Invalid verification code. ${2 - attempts} attempts remaining.`
+          };
+        }
+
+        // OTP verified successfully
+        localStorage.removeItem(`otp_${identifier}`);
+        
+        // Update user verification status
+        const user = await this.findUserByIdentifier(identifier);
+        if (user) {
+          user.isVerified = true;
+          await this.updateUser(user);
+        }
+
+        // Log verification
+        await AuditService.log({
+          action: 'otp_verified',
+          resource: 'auth',
+          details: { identifier },
+          ipAddress: await this.getClientIP(),
+          success: true
+        });
+
         return {
-          success: false,
-          message: `Invalid verification code. ${2 - attempts} attempts remaining.`
+          success: true,
+          message: 'Verification successful'
         };
       }
-
-      // OTP verified successfully
-      localStorage.removeItem(`otp_${identifier}`);
-      
-      // Update user verification status
-      const user = await this.findUserByIdentifier(identifier);
-      if (user) {
-        user.isVerified = true;
-        await this.updateUser(user);
-      }
-
-      // Log verification
-      await AuditService.log({
-        action: 'otp_verified',
-        resource: 'auth',
-        details: { identifier },
-        ipAddress: await this.getClientIP(),
-        success: true
-      });
-
-      return {
-        success: true,
-        message: 'Verification successful'
-      };
     } catch (error) {
       return {
         success: false,
@@ -402,30 +498,57 @@ export class AuthService {
         throw new Error('No refresh token available');
       }
 
-      // Verify refresh token
-      const payload = await JWTService.verifyToken(currentTokens.refreshToken, 'refresh');
-      if (!payload) {
-        throw new Error('Invalid refresh token');
+      try {
+        // Try API endpoint first
+        const response = await fetch(`${this.API_BASE}/api/refresh-token`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentTokens.refreshToken}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          
+          if (result.success && result.tokens) {
+            // Store new tokens
+            await this.storeTokensSecurely(result.tokens);
+            return result;
+          } else {
+            throw new Error(result.message || 'Token refresh failed');
+          }
+        }
+        
+        // If API call fails, fall back to local token refresh
+        throw new Error('API unavailable, using local token refresh');
+      } catch (apiError) {
+        console.warn('API token refresh failed, using local refresh:', apiError);
+        
+        // Verify refresh token
+        const payload = await JWTService.verifyToken(currentTokens.refreshToken, 'refresh');
+        if (!payload) {
+          throw new Error('Invalid refresh token');
+        }
+
+        // Get user
+        const user = await this.findUserById(payload.userId);
+        if (!user) {
+          throw new Error('User not found');
+        }
+
+        // Generate new tokens
+        const newTokens = await JWTService.generateTokens(user);
+        
+        // Store new tokens
+        await this.storeTokensSecurely(newTokens);
+
+        return {
+          success: true,
+          tokens: newTokens,
+          message: 'Token refreshed successfully'
+        };
       }
-
-      // Get user
-      const user = await this.findUserById(payload.userId);
-      if (!user) {
-        throw new Error('User not found');
-      }
-
-      // Generate new tokens
-      const newTokens = await JWTService.generateTokens(user);
-      
-      // Store new tokens
-      await this.storeTokensSecurely(newTokens);
-
-      return {
-        success: true,
-        tokens: newTokens,
-        message: 'Token refreshed successfully'
-      };
-
     } catch (error) {
       await this.logout(); // Clear invalid tokens
       return {
@@ -441,6 +564,19 @@ export class AuthService {
       const user = await this.getStoredUser();
 
       if (tokens && user) {
+        try {
+          // Try API endpoint first
+          await fetch(`${this.API_BASE}/api/logout`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${tokens.accessToken}`
+            }
+          });
+        } catch (apiError) {
+          console.warn('API logout failed, using local logout:', apiError);
+        }
+
         // Invalidate session
         await this.invalidateSession(user.id);
 
@@ -464,6 +600,7 @@ export class AuthService {
     }
   }
 
+  // Security Methods
   static async validateSession(): Promise<boolean> {
     try {
       const tokens = await this.getStoredTokens();
@@ -756,7 +893,7 @@ export class AuthService {
     return users;
   }
 
-  private static async updateLastLogin(userId: string, ipAddress: string): Promise<void> {
+  static async updateLastLogin(userId: string, ipAddress: string): Promise<void> {
     const user = await this.findUserById(userId);
     if (user) {
       user.lastLogin = new Date();

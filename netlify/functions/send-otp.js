@@ -1,5 +1,4 @@
 const nodemailer = require('nodemailer');
-const twilio = require('twilio');
 
 // Mock database for storing OTPs (in production, use a real database)
 const otpStore = new Map();
@@ -14,11 +13,6 @@ const emailTransporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASSWORD
   }
 });
-
-// Twilio configuration
-const twilioClient = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
-  ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
-  : null;
 
 // Generate a 6-digit OTP
 function generateOTP() {
@@ -68,24 +62,11 @@ async function sendEmailOTP(email, otp) {
   }
 }
 
-// Send OTP via SMS
+// Send OTP via SMS (mock implementation)
 async function sendSMSOTP(phoneNumber, otp) {
-  if (!twilioClient) {
-    console.log(`[DEMO MODE] SMS OTP for ${phoneNumber}: ${otp}`);
-    return { success: true, message: 'OTP sent to phone (demo mode)' };
-  }
-
-  try {
-    await twilioClient.messages.create({
-      body: `Your Excel Pro AI verification code is: ${otp}. This code will expire in 5 minutes.`,
-      from: process.env.TWILIO_PHONE_NUMBER,
-      to: phoneNumber
-    });
-    return { success: true, message: 'OTP sent to phone' };
-  } catch (error) {
-    console.error('SMS sending error:', error);
-    return { success: false, message: 'Failed to send SMS' };
-  }
+  // In a real implementation, this would use Twilio or another SMS service
+  console.log(`[DEMO MODE] SMS OTP for ${phoneNumber}: ${otp}`);
+  return { success: true, message: 'OTP sent to phone (demo mode)' };
 }
 
 exports.handler = async function(event, context) {

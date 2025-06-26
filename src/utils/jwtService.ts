@@ -1,5 +1,6 @@
 import { User, AuthTokens } from '../types/auth';
 import { CryptoService } from './cryptoService';
+import { EnvironmentService } from './environmentService';
 
 interface JWTPayload {
   userId: string;
@@ -16,7 +17,7 @@ interface JWTPayload {
 export class JWTService {
   private static readonly ACCESS_TOKEN_EXPIRY = 15 * 60; // 15 minutes
   private static readonly REFRESH_TOKEN_EXPIRY = 7 * 24 * 60 * 60; // 7 days
-  private static readonly JWT_SECRET = process.env.VITE_JWT_SECRET || 'your-super-secret-key-change-in-production';
+  private static readonly JWT_SECRET = EnvironmentService.getJwtSecret();
 
   static async generateTokens(user: User): Promise<AuthTokens> {
     const deviceFingerprint = this.generateDeviceFingerprint();
