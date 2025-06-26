@@ -187,11 +187,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
           const { code } = JSON.parse(storedData);
           setDemoOTP(code);
         }
-      } else {
-        const sentOTP = await SMSService.getLastSentOTP(formData.identifier);
-        if (sentOTP) {
-          setDemoOTP(sentOTP);
-        }
       }
 
       setOtpSent(true);

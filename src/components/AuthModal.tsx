@@ -8,7 +8,6 @@ import { ReferralService } from '../utils/referralService';
 import { DeviceService } from '../utils/deviceService';
 import { SecurityService } from '../utils/securityService';
 import { AuthService } from '../utils/authService';
-import { SMSService } from '../utils/smsService';
 import 'react-phone-number-input/style.css';
 
 interface AuthModalProps {
@@ -159,13 +158,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         // For demo purposes, retrieve the OTP that was generated
         if (result.demo?.otp) {
           setDemoOTP(result.demo.otp);
-        } else if (identifierType === 'phone') {
-          // Get OTP from SMS service for demo
-          const sentOTP = await SMSService.getLastSentOTP(formData.identifier);
-          if (sentOTP) {
-            setDemoOTP(sentOTP);
-          }
-        } else {
+        } else if (identifierType === 'email') {
           // Get email OTP from localStorage for demo
           const storedData = localStorage.getItem(`otp_${formData.identifier}`);
           if (storedData) {
