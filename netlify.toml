@@ -25,6 +25,17 @@
   status = 301
   force = true
 
+# API proxy for email verification
+[[redirects]]
+  from = "/api/send-otp"
+  to = "/.netlify/functions/send-otp"
+  status = 200
+
+[[redirects]]
+  from = "/api/verify-otp"
+  to = "/.netlify/functions/verify-otp"
+  status = 200
+
 # SPA fallback
 [[redirects]]
   from = "/*"
@@ -63,9 +74,3 @@
   for = "*.woff2"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
-
-# API headers
-[[headers]]
-  for = "/api/*"
-  [headers.values]
-    Cache-Control = "no-cache"

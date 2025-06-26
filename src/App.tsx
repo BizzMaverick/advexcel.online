@@ -24,6 +24,7 @@ import { SheetCreator } from './components/SheetCreator';
 import { LoadingProgress } from './components/LoadingProgress';
 import { Logo } from './components/Logo';
 import { ScrollingBanner } from './components/ScrollingBanner';
+import { OtpVerification } from './components/OtpVerification';
 import { SpreadsheetData, Cell } from './types/spreadsheet';
 import { User } from './types/auth';
 import { SuggestionFeedback } from './types/chat';
@@ -38,6 +39,7 @@ import { DocumentConverter } from './utils/documentConverter';
 import { MultiSheetHandler } from './utils/multiSheetHandler';
 import { useAuthContext } from './context/AuthContext';
 import { AuthGuard } from './components/AuthGuard';
+import { EnvironmentService } from './utils/environmentService';
 
 function App() {
   // Authentication state from context
@@ -56,6 +58,12 @@ function App() {
   const [showChatBot, setShowChatBot] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [showPrivacyBanner, setShowPrivacyBanner] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showOtpVerification, setShowOtpVerification] = useState(false);
+  const [verificationData, setVerificationData] = useState<{
+    identifier: string;
+    identifierType: 'email' | 'phone';
+  } | null>(null);
   
   // Loading state
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -127,6 +135,20 @@ function App() {
   const handleAuthSuccess = (userData: User) => {
     setShowWelcomeScreen(true);
     addNotification(`Welcome ${userData.email || userData.phoneNumber}!`, 'success');
+    setShowAuthModal(false);
+  };
+
+  const handleVerificationSuccess = () => {
+    addNotification('Account verification successful!', 'success');
+    setShowOtpVerification(false);
+    // Automatically show login modal after verification
+    setShowAuthModal(true);
+  };
+
+  const handleVerificationRequest = (identifier: string, identifierType: 'email' | 'phone') => {
+    setVerificationData({ identifier, identifierType });
+    setShowOtpVerification(true);
+    setShowAuthModal(false);
   };
 
   const handleLogout = () => {
@@ -145,7 +167,8 @@ function App() {
 
   const checkFeatureAccess = (): boolean => {
     if (!isAuthenticated) {
-      addNotification('Please log in to access this feature.', 'error');
+      setShowAuthModal(true);
+      addNotification('Please log in to access this feature.', 'info');
       return false;
     }
     return true;
@@ -799,7 +822,7 @@ function App() {
                   <span className="text-sm font-medium">🔒 Privacy Protected</span>
                 </div>
                 <div className="hidden sm:block">
-                  <span className="text-sm">•</span>
+                  <span className="text-xs">•</span>
                 </div>
                 <div className="whitespace-nowrap animate-marquee">
                   <span className="text-sm">All data processing happens locally in your browser • Your files never leave your device • 100% secure and private</span>
@@ -874,28 +897,40 @@ function App() {
                 </button>
               )}
               
-              <div className="flex items-center space-x-2 text-sm text-slate-600">
-                <Shield className="h-4 w-4 text-cyan-600" />
-                <span>{user?.email || user?.phoneNumber}</span>
-                {isSubscribed && (
-                  <span className="bg-cyan-100 text-cyan-800 px-2 py-1 rounded-full text-xs font-medium">
-                    Pro
-                  </span>
-                )}
-                {trialInfo?.isTrialActive && (
-                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                    Trial: {trialInfo.daysRemaining}d
-                  </span>
-                )}
-              </div>
-              
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
-              >
-                <LogOut className="h-4 w-4" />
-                <span>Logout</span>
-              </button>
+              {isAuthenticated ? (
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2 text-sm text-slate-600">
+                    <Shield className="h-4 w-4 text-cyan-600" />
+                    <span>{user?.email || user?.phoneNumber}</span>
+                    {isSubscribed && (
+                      <span className="bg-cyan-100 text-cyan-800 px-2 py-1 rounded-full text-xs font-medium">
+                        Pro
+                      </span>
+                    )}
+                    {trialInfo?.isTrialActive && (
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                        Trial: {trialInfo.daysRemaining}d
+                      </span>
+                    )}
+                  </div>
+                  
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Shield className="h-4 w-4" />
+                  <span>Sign In</span>
+                </button>
+              )}
             </div>
           </div>
         </header>
@@ -1058,6 +1093,24 @@ function App() {
           setLoadingProgress(0);
         }}
       />
+
+      <AuthModal
+        isVisible={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onAuthSuccess={handleAuthSuccess}
+        onVerificationRequest={handleVerificationRequest}
+      />
+
+      {showOtpVerification && verificationData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <OtpVerification
+            identifier={verificationData.identifier}
+            identifierType={verificationData.identifierType}
+            onVerificationSuccess={handleVerificationSuccess}
+            onCancel={() => setShowOtpVerification(false)}
+          />
+        </div>
+      )}
 
       {/* Notifications */}
       <div className={`fixed top-4 right-4 space-y-2 z-50 ${showPrivacyBanner ? 'mb-16' : ''}`}>

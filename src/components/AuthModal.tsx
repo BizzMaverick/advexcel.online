@@ -15,12 +15,18 @@ interface AuthModalProps {
   isVisible: boolean;
   onClose: () => void;
   onAuthSuccess: (user: any) => void;
+  onVerificationRequest?: (identifier: string, identifierType: 'email' | 'phone') => void;
 }
 
 type AuthMode = 'login' | 'signup' | 'otp' | 'forgot-password' | 'reset-password' | 'mfa';
 type IdentifierType = 'email' | 'phone';
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuthSuccess }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ 
+  isVisible, 
+  onClose, 
+  onAuthSuccess,
+  onVerificationRequest
+}) => {
   const { login, register, error: authError, clearError } = useAuth();
   
   const [mode, setMode] = useState<AuthMode>('login');
@@ -132,7 +138,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
     setError('');
     
     try {
-      const result = await AuthService.sendOTP(formData.identifier, identifierType);
+      const response = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          identifier: formData.identifier,
+          type: identifierType
+        })
+      });
+      
+      const result = await response.json();
       
       if (result.success) {
         setSuccess(result.message);
@@ -140,9 +157,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
         setVerificationInProgress(true);
         
         // For demo purposes, retrieve the OTP that was generated
-        if (identifierType === 'phone') {
+        if (result.demo?.otp) {
+          setDemoOTP(result.demo.otp);
+        } else if (identifierType === 'phone') {
           // Get OTP from SMS service for demo
-          const sentOTP = SMSService.getLastSentOTP(formData.identifier);
+          const sentOTP = await SMSService.getLastSentOTP(formData.identifier);
           if (sentOTP) {
             setDemoOTP(sentOTP);
           }
@@ -158,7 +177,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
         // Automatically switch to OTP verification mode
         setMode('otp');
       } else {
-        setError(result.message);
+        setError(result.message || 'Failed to send verification code');
       }
     } catch (error) {
       setError('Failed to send verification code. Please try again.');
@@ -242,7 +261,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
         const result = await register(signupData);
         
         if (result.success) {
-          await sendOTP();
+          // Send OTP for verification
+          if (onVerificationRequest) {
+            onVerificationRequest(formData.identifier, identifierType);
+            onClose();
+          } else {
+            await sendOTP();
+          }
         } else {
           throw new Error(result.message || 'Registration failed');
         }
@@ -273,10 +298,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
         }
 
         // Verify OTP
-        const result = await AuthService.verifyOTP(formData.identifier, formData.otp);
+        const response = await fetch('/api/verify-otp', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            identifier: formData.identifier,
+            otp: formData.otp
+          })
+        });
+        
+        const result = await response.json();
         
         if (!result.success) {
-          throw new Error(result.message);
+          throw new Error(result.message || 'Invalid verification code');
         }
 
         setSuccess('Verification successful!');
@@ -324,10 +360,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
         }
 
         // Verify OTP
-        const otpResult = await AuthService.verifyOTP(formData.identifier, formData.otp);
+        const response = await fetch('/api/verify-otp', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            identifier: formData.identifier,
+            otp: formData.otp
+          })
+        });
         
-        if (!otpResult.success) {
-          throw new Error(otpResult.message);
+        const result = await response.json();
+        
+        if (!result.success) {
+          throw new Error(result.message || 'Invalid verification code');
         }
 
         // In a real app, reset password with backend
@@ -651,6 +698,63 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
               </div>
             )}
 
+            {/* OTP Input */}
+            {mode === 'otp' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Verification Code
+                </label>
+                <input
+                  type="text"
+                  value={formData.otp}
+                  onChange={(e) => setFormData({ ...formData, otp: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-lg tracking-widest"
+                  placeholder="000000"
+                  maxLength={6}
+                  required
+                />
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-sm text-gray-600">
+                    Enter the 6-digit code sent to your {identifierType === 'email' ? 'email' : 'phone'}
+                  </p>
+                  {otpTimer > 0 ? (
+                    <span className="text-sm text-blue-600">Resend in {otpTimer}s</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={sendOTP}
+                      disabled={isLoading}
+                      className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      <span>Resend Code</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* MFA Input */}
+            {mode === 'mfa' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Two-Factor Authentication Code
+                </label>
+                <input
+                  type="text"
+                  value={formData.mfaCode}
+                  onChange={(e) => setFormData({ ...formData, mfaCode: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-lg tracking-widest"
+                  placeholder="000000"
+                  maxLength={6}
+                  required
+                />
+                <p className="text-sm text-gray-600 mt-2">
+                  Enter the 6-digit code from your authenticator app
+                </p>
+              </div>
+            )}
+
             {/* Terms and Conditions (Signup only) */}
             {mode === 'signup' && (
               <div className="flex items-start space-x-2">
@@ -724,63 +828,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
                     </p>
                   </div>
                 )}
-              </div>
-            )}
-
-            {/* OTP Input */}
-            {mode === 'otp' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Verification Code
-                </label>
-                <input
-                  type="text"
-                  value={formData.otp}
-                  onChange={(e) => setFormData({ ...formData, otp: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-lg tracking-widest"
-                  placeholder="000000"
-                  maxLength={6}
-                  required
-                />
-                <div className="flex items-center justify-between mt-2">
-                  <p className="text-sm text-gray-600">
-                    Enter the 6-digit code sent to your {identifierType === 'email' ? 'email' : 'phone'}
-                  </p>
-                  {otpTimer > 0 ? (
-                    <span className="text-sm text-blue-600">Resend in {otpTimer}s</span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={sendOTP}
-                      disabled={isLoading}
-                      className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
-                    >
-                      <RefreshCw className="h-3 w-3" />
-                      <span>Resend Code</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* MFA Input */}
-            {mode === 'mfa' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Two-Factor Authentication Code
-                </label>
-                <input
-                  type="text"
-                  value={formData.mfaCode}
-                  onChange={(e) => setFormData({ ...formData, mfaCode: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-lg tracking-widest"
-                  placeholder="000000"
-                  maxLength={6}
-                  required
-                />
-                <p className="text-sm text-gray-600 mt-2">
-                  Enter the 6-digit code from your authenticator app
-                </p>
               </div>
             )}
 
