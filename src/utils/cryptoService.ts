@@ -1,17 +1,23 @@
 import * as CryptoJS from 'crypto-js';
-import * as bcrypt from 'bcryptjs';
 
 export class CryptoService {
   private static readonly SALT_ROUNDS = 12;
   private static readonly ENCRYPTION_KEY = 'your-encryption-key-change-in-production';
 
-  // Password hashing using bcrypt
+  // Password hashing using Web Crypto API (browser-compatible)
   static async hashPassword(password: string): Promise<string> {
-    return bcrypt.hashSync(password, this.SALT_ROUNDS);
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password + this.generateSalt());
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
   static async verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-    return bcrypt.compareSync(password, hashedPassword);
+    // For browser environments, we'll use a simple comparison
+    // In production, this should be handled server-side
+    const hashedInput = await this.hashPassword(password);
+    return this.constantTimeCompare(hashedInput, hashedPassword);
   }
 
   // Encryption/Decryption
