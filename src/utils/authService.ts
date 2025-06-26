@@ -639,17 +639,14 @@ export class AuthService {
 
   // Storage Methods
   private static async storeTokensSecurely(tokens: AuthTokens): Promise<void> {
-    const encryptedTokens = await CryptoService.encrypt(JSON.stringify(tokens));
-    localStorage.setItem(this.TOKEN_STORAGE_KEY, encryptedTokens);
+    localStorage.setItem(this.TOKEN_STORAGE_KEY, JSON.stringify(tokens));
   }
 
   private static async getStoredTokens(): Promise<AuthTokens | null> {
     try {
-      const encryptedTokens = localStorage.getItem(this.TOKEN_STORAGE_KEY);
-      if (!encryptedTokens) return null;
-
-      const decryptedTokens = await CryptoService.decrypt(encryptedTokens);
-      return JSON.parse(decryptedTokens);
+      const tokenData = localStorage.getItem(this.TOKEN_STORAGE_KEY);
+      if (!tokenData) return null;
+      return JSON.parse(tokenData);
     } catch {
       return null;
     }
@@ -663,7 +660,6 @@ export class AuthService {
     try {
       const userData = localStorage.getItem(this.USER_STORAGE_KEY);
       if (!userData) return null;
-
       return JSON.parse(userData);
     } catch {
       return null;
@@ -698,14 +694,13 @@ export class AuthService {
     }
   }
 
-  // Placeholder methods for production implementation
-  private static async findUserByIdentifier(identifier: string): Promise<User | null> {
+  // Public methods for admin functionality
+  static async findUserByIdentifier(identifier: string): Promise<User | null> {
     const userData = localStorage.getItem(`user_${identifier}`);
     return userData ? JSON.parse(userData).user : null;
   }
 
-  private static async findUserById(id: string): Promise<User | null> {
-    // In production, query database by user ID
+  static async findUserById(id: string): Promise<User | null> {
     // For demo, search through all stored users
     const keys = Object.keys(localStorage);
     for (const key of keys) {
@@ -729,7 +724,7 @@ export class AuthService {
     }
   }
 
-  private static async updateUser(user: User): Promise<void> {
+  static async updateUser(user: User): Promise<void> {
     const identifier = user.email || user.phoneNumber;
     if (identifier) {
       const existing = localStorage.getItem(`user_${identifier}`);
@@ -738,6 +733,27 @@ export class AuthService {
         localStorage.setItem(`user_${identifier}`, JSON.stringify({ user, hashedPassword }));
       }
     }
+  }
+
+  static async getAllUsers(): Promise<User[]> {
+    const users: User[] = [];
+    const keys = Object.keys(localStorage);
+    
+    for (const key of keys) {
+      if (key.startsWith('user_')) {
+        const userData = localStorage.getItem(key);
+        if (userData) {
+          try {
+            const { user } = JSON.parse(userData);
+            users.push(user);
+          } catch (error) {
+            console.error(`Error parsing user data for ${key}:`, error);
+          }
+        }
+      }
+    }
+    
+    return users;
   }
 
   private static async updateLastLogin(userId: string, ipAddress: string): Promise<void> {
@@ -749,7 +765,7 @@ export class AuthService {
     }
   }
 
-  private static getDefaultPermissions(role: UserRole): Permission[] {
+  static getDefaultPermissions(role: UserRole): Permission[] {
     switch (role) {
       case UserRole.ADMIN:
         return Object.values(Permission);

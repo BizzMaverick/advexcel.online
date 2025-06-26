@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { User, AuthTokens, AuthState, LoginCredentials, SignupData } from '../types/auth';
+import { User, AuthTokens, AuthState, LoginCredentials, SignupData, UserRole, Permission } from '../types/auth';
 import { AuthService } from '../utils/authService';
 import { SecurityService } from '../utils/securityService';
 import { AuditService } from '../utils/auditService';
@@ -273,10 +273,13 @@ export const useAuth = () => {
 
     // Utilities
     hasPermission: (permission: string) => 
-      authState.user?.permissions.includes(permission as any) || false,
+      authState.user?.permissions.includes(permission as any) || 
+      authState.user?.role === UserRole.ADMIN || false,
+    
     hasRole: (role: string) => 
       authState.user?.role === role,
+    
     isAdmin: () => 
-      authState.user?.role === 'admin'
+      authState.user?.role === UserRole.ADMIN
   };
 };

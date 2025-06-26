@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { FileSpreadsheet, Upload, RotateCcw, MessageCircle, Star, LogOut, Shield, X, Crown, Gift, Users, Calculator, Search } from 'lucide-react';
 import Papa from 'papaparse';
 import { SpreadsheetGrid } from './components/SpreadsheetGrid';
@@ -40,6 +41,8 @@ import { MultiSheetHandler } from './utils/multiSheetHandler';
 import { useAuthContext } from './context/AuthContext';
 import { AuthGuard } from './components/AuthGuard';
 import { EnvironmentService } from './utils/environmentService';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminRoute from './components/AdminRoute';
 
 function App() {
   // Authentication state from context
@@ -798,337 +801,356 @@ function App() {
     'Clear range B1:B10',
   ];
 
-  // Show welcome screen if not authenticated or no data is loaded
-  if (!isAuthenticated || (showWelcomeScreen && !isDataLoaded)) {
-    return (
-      <WelcomeScreen 
-        onImportFile={handleImportFile} 
-        onCreateNewSheet={() => setShowSheetCreator(true)}
-        isLoading={isLoading} 
-      />
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Privacy Banner */}
-      {showPrivacyBanner && (
-        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-cyan-600 to-blue-600 text-white py-2 px-4 z-50 shadow-lg">
-          <div className="flex items-center justify-between max-w-7xl mx-auto">
-            <div className="flex items-center space-x-3">
-              <Shield className="h-4 w-4 flex-shrink-0" />
-              <div className="flex items-center space-x-2 overflow-hidden">
-                <div className="animate-pulse">
-                  <span className="text-sm font-medium">🔒 Privacy Protected</span>
-                </div>
-                <div className="hidden sm:block">
-                  <span className="text-xs">•</span>
-                </div>
-                <div className="whitespace-nowrap animate-marquee">
-                  <span className="text-sm">All data processing happens locally in your browser • Your files never leave your device • 100% secure and private</span>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={dismissPrivacyBanner}
-              className="text-white hover:text-cyan-100 transition-colors ml-4 flex-shrink-0"
-              title="Dismiss privacy notice"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Subscription Banner */}
-      <ScrollingBanner>
-        <SubscriptionBanner
-          trialInfo={trialInfo}
-          isSubscribed={isSubscribed}
-          onUpgradeClick={() => setShowSubscriptionModal(true)}
-        />
-      </ScrollingBanner>
-
-      {/* Sidebar */}
-      <Sidebar
-        onAnalyticsClick={() => {
-          if (checkFeatureAccess()) setShowAnalyticsPanel(true);
-        }}
-        onPivotTableClick={() => {
-          if (checkFeatureAccess()) setShowPivotPanel(true);
-        }}
-        onExportClick={() => {
-          if (checkFeatureAccess()) setShowExportModal(true);
-        }}
-        onImportClick={handleImportFile}
-        onCreateSheetClick={() => setShowSheetCreator(true)}
-        isDataLoaded={isDataLoaded}
-      />
-
-      {/* Main Content */}
-      <div className="flex-1 ml-16 flex flex-col">
-        {/* Header */}
-        <header className="bg-white border-b border-slate-200 px-6 py-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div 
-              className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-opacity duration-200"
-              onClick={handleLogoClick}
-              title="Click to refresh and start new analysis"
-            >
-              <div className="relative">
-                <Logo size="lg" />
-                <RotateCcw className="h-3 w-3 text-cyan-500 absolute -top-1 -right-1" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-blue-600 bg-clip-text text-transparent">Excel Pro AI</h1>
-                <p className="text-sm text-slate-500">Advanced spreadsheet analysis with natural language queries and AI-powered insights</p>
-              </div>
-            </div>
-            
-            {/* User Menu */}
-            <div className="flex items-center space-x-4">
-              {!isSubscribed && (
-                <button
-                  onClick={() => setShowSubscriptionModal(true)}
-                  className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-gradient-to-r from-yellow-500 to-orange-500 rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-colors shadow-md"
-                >
-                  <Crown className="h-4 w-4" />
-                  <span>Upgrade</span>
-                </button>
-              )}
-              
-              {isAuthenticated ? (
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2 text-sm text-slate-600">
-                    <Shield className="h-4 w-4 text-cyan-600" />
-                    <span>{user?.email || user?.phoneNumber}</span>
-                    {isSubscribed && (
-                      <span className="bg-cyan-100 text-cyan-800 px-2 py-1 rounded-full text-xs font-medium">
-                        Pro
-                      </span>
-                    )}
-                    {trialInfo?.isTrialActive && (
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                        Trial: {trialInfo.daysRemaining}d
-                      </span>
-                    )}
+    <Router>
+      <Routes>
+        <Route path="/admin/*" element={
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
+        } />
+        <Route path="/*" element={
+          <div className="min-h-screen bg-slate-50 flex flex-col">
+            {/* Privacy Banner */}
+            {showPrivacyBanner && (
+              <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-cyan-600 to-blue-600 text-white py-2 px-4 z-50 shadow-lg">
+                <div className="flex items-center justify-between max-w-7xl mx-auto">
+                  <div className="flex items-center space-x-3">
+                    <Shield className="h-4 w-4 flex-shrink-0" />
+                    <div className="flex items-center space-x-2 overflow-hidden">
+                      <div className="animate-pulse">
+                        <span className="text-sm font-medium">🔒 Privacy Protected</span>
+                      </div>
+                      <div className="hidden sm:block">
+                        <span className="text-xs">•</span>
+                      </div>
+                      <div className="whitespace-nowrap animate-marquee">
+                        <span className="text-sm">All data processing happens locally in your browser • Your files never leave your device • 100% secure and private</span>
+                      </div>
+                    </div>
                   </div>
-                  
                   <button
-                    onClick={handleLogout}
-                    className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
+                    onClick={dismissPrivacyBanner}
+                    className="text-white hover:text-cyan-100 transition-colors ml-4 flex-shrink-0"
+                    title="Dismiss privacy notice"
                   >
-                    <LogOut className="h-4 w-4" />
-                    <span>Logout</span>
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
-              ) : (
-                <button
-                  onClick={() => setShowAuthModal(true)}
-                  className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <Shield className="h-4 w-4" />
-                  <span>Sign In</span>
-                </button>
+              </div>
+            )}
+
+            {/* Subscription Banner */}
+            <ScrollingBanner>
+              <SubscriptionBanner
+                trialInfo={trialInfo}
+                isSubscribed={isSubscribed}
+                onUpgradeClick={() => setShowSubscriptionModal(true)}
+              />
+            </ScrollingBanner>
+
+            {/* Sidebar */}
+            <Sidebar
+              onAnalyticsClick={() => {
+                if (checkFeatureAccess()) setShowAnalyticsPanel(true);
+              }}
+              onPivotTableClick={() => {
+                if (checkFeatureAccess()) setShowPivotPanel(true);
+              }}
+              onExportClick={() => {
+                if (checkFeatureAccess()) setShowExportModal(true);
+              }}
+              onImportClick={handleImportFile}
+              onCreateSheetClick={() => setShowSheetCreator(true)}
+              isDataLoaded={isDataLoaded}
+            />
+
+            {/* Main Content */}
+            <div className="flex-1 ml-16 flex flex-col">
+              {/* Header */}
+              <header className="bg-white border-b border-slate-200 px-6 py-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div 
+                    className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-opacity duration-200"
+                    onClick={handleLogoClick}
+                    title="Click to refresh and start new analysis"
+                  >
+                    <div className="relative">
+                      <Logo size="lg" />
+                      <RotateCcw className="h-3 w-3 text-cyan-500 absolute -top-1 -right-1" />
+                    </div>
+                    <div>
+                      <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-blue-600 bg-clip-text text-transparent">Excel Pro AI</h1>
+                      <p className="text-sm text-slate-500">Advanced spreadsheet analysis with natural language queries and AI-powered insights</p>
+                    </div>
+                  </div>
+                  
+                  {/* User Menu */}
+                  <div className="flex items-center space-x-4">
+                    {!isSubscribed && (
+                      <button
+                        onClick={() => setShowSubscriptionModal(true)}
+                        className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-gradient-to-r from-yellow-500 to-orange-500 rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-colors shadow-md"
+                      >
+                        <Crown className="h-4 w-4" />
+                        <span>Upgrade</span>
+                      </button>
+                    )}
+                    
+                    {isAuthenticated ? (
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-2 text-sm text-slate-600">
+                          <Shield className="h-4 w-4 text-cyan-600" />
+                          <span>{user?.email || user?.phoneNumber}</span>
+                          {isSubscribed && (
+                            <span className="bg-cyan-100 text-cyan-800 px-2 py-1 rounded-full text-xs font-medium">
+                              Pro
+                            </span>
+                          )}
+                          {trialInfo?.isTrialActive && (
+                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                              Trial: {trialInfo.daysRemaining}d
+                            </span>
+                          )}
+                        </div>
+                        
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
+                        >
+                          <LogOut className="h-4 w-4" />
+                          <span>Logout</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setShowAuthModal(true)}
+                        className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <Shield className="h-4 w-4" />
+                        <span>Sign In</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </header>
+
+              {/* Admin Link (only for admin users) */}
+              {isAuthenticated && user?.role === 'admin' && (
+                <div className="bg-purple-50 border-b border-purple-200 px-6 py-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 text-sm text-purple-800">
+                      <Shield className="h-4 w-4 text-purple-600" />
+                      <span>Admin access enabled</span>
+                    </div>
+                    <Link
+                      to="/admin"
+                      className="text-sm font-medium text-purple-700 hover:text-purple-900 flex items-center space-x-1"
+                    >
+                      <span>Go to Admin Dashboard</span>
+                      <Users className="h-4 w-4" />
+                    </Link>
+                  </div>
+                </div>
               )}
-            </div>
-          </div>
-        </header>
 
-        {/* Workbook Manager */}
-        {workbook && (
-          <WorkbookManager
-            workbook={workbook}
-            onWorksheetChange={handleWorksheetChange}
-            onWorksheetAdd={handleWorksheetAdd}
-            onWorksheetDelete={handleWorksheetDelete}
-            onWorksheetRename={handleWorksheetRename}
-          />
-        )}
-
-        {/* Command Bar */}
-        <div className="bg-white border-b border-slate-200 px-6 py-4">
-          <div className="mb-2">
-            <div className="flex items-center space-x-2 text-sm text-slate-600">
-              <Search className="h-4 w-4" />
-              <span className="font-medium">Try natural language commands:</span>
-              <span className="text-cyan-600">"add data value 100 to cell A1"</span>
-              <span className="text-slate-400">•</span>
-              <span className="text-cyan-600">"apply formula =SUM(A1:A10) to cell B1"</span>
-              <span className="text-slate-400">•</span>
-              <span className="text-cyan-600">"open formula assistant"</span>
-              {workbook && workbook.worksheets.length > 1 && (
-                <>
-                  <span className="text-slate-400">•</span>
-                  <span className="text-cyan-600">"analyze Sheet2 data"</span>
-                </>
+              {/* Workbook Manager */}
+              {workbook && (
+                <WorkbookManager
+                  workbook={workbook}
+                  onWorksheetChange={handleWorksheetChange}
+                  onWorksheetAdd={handleWorksheetAdd}
+                  onWorksheetDelete={handleWorksheetDelete}
+                  onWorksheetRename={handleWorksheetRename}
+                />
               )}
-            </div>
-          </div>
-          <CommandBar 
-            onExecuteCommand={handleExecuteCommand} 
-            suggestions={enhancedSuggestions}
-          />
-        </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex overflow-hidden">
-          <div className="flex-1 flex flex-col">
-            <div className="flex-1 p-6 overflow-hidden">
-              <SpreadsheetGrid
-                data={spreadsheetData}
-                onCellChange={handleCellChange}
-                onCellSelect={handleCellSelect}
+              {/* Command Bar */}
+              <div className="bg-white border-b border-slate-200 px-6 py-4">
+                <div className="mb-2">
+                  <div className="flex items-center space-x-2 text-sm text-slate-600">
+                    <Search className="h-4 w-4" />
+                    <span className="font-medium">Try natural language commands:</span>
+                    <span className="text-cyan-600">"add data value 100 to cell A1"</span>
+                    <span className="text-slate-400">•</span>
+                    <span className="text-cyan-600">"apply formula =SUM(A1:A10) to cell B1"</span>
+                    <span className="text-slate-400">•</span>
+                    <span className="text-cyan-600">"open formula assistant"</span>
+                    {workbook && workbook.worksheets.length > 1 && (
+                      <>
+                        <span className="text-slate-400">•</span>
+                        <span className="text-cyan-600">"analyze Sheet2 data"</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <CommandBar 
+                  onExecuteCommand={handleExecuteCommand} 
+                  suggestions={enhancedSuggestions}
+                />
+              </div>
+
+              {/* Main Content Area */}
+              <div className="flex-1 flex overflow-hidden">
+                <div className="flex-1 flex flex-col">
+                  <div className="flex-1 p-6 overflow-hidden">
+                    <SpreadsheetGrid
+                      data={spreadsheetData}
+                      onCellChange={handleCellChange}
+                      onCellSelect={handleCellSelect}
+                    />
+                  </div>
+                  
+                  <StatusBar
+                    selectedCell={spreadsheetData.selectedCell}
+                    cell={selectedCell}
+                    calculations={calculateSelectionStats()}
+                  />
+                </div>
+              </div>
+
+              <Footer 
+                onReferralClick={() => setShowReferralPanel(true)}
+                onRatingClick={() => setShowRatingModal(true)}
               />
             </div>
-            
-            <StatusBar
-              selectedCell={spreadsheetData.selectedCell}
-              cell={selectedCell}
-              calculations={calculateSelectionStats()}
+
+            {/* Chat Button */}
+            <div className="fixed bottom-6 right-6 z-50">
+              <button
+                onClick={() => setShowChatBot(true)}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110"
+                title="Need help? Chat with us!"
+              >
+                <MessageCircle className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Modals and Panels */}
+            <AnalyticsPanel
+              data={spreadsheetData}
+              isVisible={showAnalyticsPanel}
+              onClose={() => setShowAnalyticsPanel(false)}
             />
+
+            <QueryResultsPanel
+              result={queryResult}
+              isVisible={showQueryResults}
+              onClose={() => setShowQueryResults(false)}
+              onExport={handleExportQueryResults}
+            />
+
+            <PivotTablePanel
+              data={spreadsheetData}
+              isVisible={showPivotPanel}
+              onClose={() => setShowPivotPanel(false)}
+              onExport={handleExportQueryResults}
+            />
+
+            <ExportModal
+              isVisible={showExportModal}
+              onClose={() => setShowExportModal(false)}
+              onExport={handleExport}
+              hasData={Object.keys(spreadsheetData.cells).length > 0}
+            />
+
+            <FormulaAssistant
+              cells={spreadsheetData.cells}
+              onCellUpdate={handleCellChange}
+              onCellFormat={handleCellFormat}
+              isVisible={showFormulaAssistant}
+              onClose={() => setShowFormulaAssistant(false)}
+            />
+
+            <SheetCreator
+              isVisible={showSheetCreator}
+              onClose={() => setShowSheetCreator(false)}
+              onCreateSheet={handleCreateNewSheet}
+            />
+
+            <SubscriptionModal
+              isVisible={showSubscriptionModal}
+              onClose={() => setShowSubscriptionModal(false)}
+              userId={user?.id || ''}
+              onSubscriptionSuccess={handleSubscriptionSuccess}
+            />
+
+            <ReferralPanel
+              isVisible={showReferralPanel}
+              onClose={() => setShowReferralPanel(false)}
+              userId={user?.id || ''}
+            />
+
+            <ChatBot
+              isVisible={showChatBot}
+              onClose={() => setShowChatBot(false)}
+              onSuggestionSubmit={handleSuggestionSubmit}
+            />
+
+            <RatingModal
+              isVisible={showRatingModal}
+              onClose={() => setShowRatingModal(false)}
+              onSubmitRating={handleRatingSubmit}
+            />
+
+            <LegalModals
+              activeModal={activeLegalModal}
+              onClose={() => {
+                setActiveLegalModal(null);
+                window.history.pushState('', document.title, window.location.pathname);
+              }}
+            />
+
+            <LoadingProgress
+              isVisible={showLoadingProgress}
+              progress={loadingProgress}
+              message={loadingMessage}
+              fileName={loadingFileName}
+              onCancel={() => {
+                setShowLoadingProgress(false);
+                setIsLoading(false);
+                setLoadingProgress(0);
+              }}
+            />
+
+            <AuthModal
+              isVisible={showAuthModal}
+              onClose={() => setShowAuthModal(false)}
+              onAuthSuccess={handleAuthSuccess}
+              onVerificationRequest={handleVerificationRequest}
+            />
+
+            {showOtpVerification && verificationData && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                <OtpVerification
+                  identifier={verificationData.identifier}
+                  identifierType={verificationData.identifierType}
+                  onVerificationSuccess={handleVerificationSuccess}
+                  onCancel={() => setShowOtpVerification(false)}
+                />
+              </div>
+            )}
+
+            {/* Notifications */}
+            <div className={`fixed top-4 right-4 space-y-2 z-50 ${showPrivacyBanner ? 'mb-16' : ''}`}>
+              {notifications.map((notification) => (
+                <div
+                  key={notification.id}
+                  className={`
+                    px-4 py-3 rounded-lg shadow-lg transition-all duration-300 max-w-md
+                    ${notification.type === 'success' ? 'bg-cyan-500 text-white' :
+                      notification.type === 'error' ? 'bg-red-500 text-white' :
+                      'bg-blue-500 text-white'}
+                  `}
+                >
+                  <p className="text-sm font-medium">{notification.message}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-
-        <Footer 
-          onReferralClick={() => setShowReferralPanel(true)}
-          onRatingClick={() => setShowRatingModal(true)}
-        />
-      </div>
-
-      {/* Chat Button */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <button
-          onClick={() => setShowChatBot(true)}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110"
-          title="Need help? Chat with us!"
-        >
-          <MessageCircle className="h-6 w-6" />
-        </button>
-      </div>
-
-      {/* Modals and Panels */}
-      <AnalyticsPanel
-        data={spreadsheetData}
-        isVisible={showAnalyticsPanel}
-        onClose={() => setShowAnalyticsPanel(false)}
-      />
-
-      <QueryResultsPanel
-        result={queryResult}
-        isVisible={showQueryResults}
-        onClose={() => setShowQueryResults(false)}
-        onExport={handleExportQueryResults}
-      />
-
-      <PivotTablePanel
-        data={spreadsheetData}
-        isVisible={showPivotPanel}
-        onClose={() => setShowPivotPanel(false)}
-        onExport={handleExportQueryResults}
-      />
-
-      <ExportModal
-        isVisible={showExportModal}
-        onClose={() => setShowExportModal(false)}
-        onExport={handleExport}
-        hasData={Object.keys(spreadsheetData.cells).length > 0}
-      />
-
-      <FormulaAssistant
-        cells={spreadsheetData.cells}
-        onCellUpdate={handleCellChange}
-        onCellFormat={handleCellFormat}
-        isVisible={showFormulaAssistant}
-        onClose={() => setShowFormulaAssistant(false)}
-      />
-
-      <SheetCreator
-        isVisible={showSheetCreator}
-        onClose={() => setShowSheetCreator(false)}
-        onCreateSheet={handleCreateNewSheet}
-      />
-
-      <SubscriptionModal
-        isVisible={showSubscriptionModal}
-        onClose={() => setShowSubscriptionModal(false)}
-        userId={user?.id || ''}
-        onSubscriptionSuccess={handleSubscriptionSuccess}
-      />
-
-      <ReferralPanel
-        isVisible={showReferralPanel}
-        onClose={() => setShowReferralPanel(false)}
-        userId={user?.id || ''}
-      />
-
-      <ChatBot
-        isVisible={showChatBot}
-        onClose={() => setShowChatBot(false)}
-        onSuggestionSubmit={handleSuggestionSubmit}
-      />
-
-      <RatingModal
-        isVisible={showRatingModal}
-        onClose={() => setShowRatingModal(false)}
-        onSubmitRating={handleRatingSubmit}
-      />
-
-      <LegalModals
-        activeModal={activeLegalModal}
-        onClose={() => {
-          setActiveLegalModal(null);
-          window.history.pushState('', document.title, window.location.pathname);
-        }}
-      />
-
-      <LoadingProgress
-        isVisible={showLoadingProgress}
-        progress={loadingProgress}
-        message={loadingMessage}
-        fileName={loadingFileName}
-        onCancel={() => {
-          setShowLoadingProgress(false);
-          setIsLoading(false);
-          setLoadingProgress(0);
-        }}
-      />
-
-      <AuthModal
-        isVisible={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onAuthSuccess={handleAuthSuccess}
-        onVerificationRequest={handleVerificationRequest}
-      />
-
-      {showOtpVerification && verificationData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <OtpVerification
-            identifier={verificationData.identifier}
-            identifierType={verificationData.identifierType}
-            onVerificationSuccess={handleVerificationSuccess}
-            onCancel={() => setShowOtpVerification(false)}
-          />
-        </div>
-      )}
-
-      {/* Notifications */}
-      <div className={`fixed top-4 right-4 space-y-2 z-50 ${showPrivacyBanner ? 'mb-16' : ''}`}>
-        {notifications.map((notification) => (
-          <div
-            key={notification.id}
-            className={`
-              px-4 py-3 rounded-lg shadow-lg transition-all duration-300 max-w-md
-              ${notification.type === 'success' ? 'bg-cyan-500 text-white' :
-                notification.type === 'error' ? 'bg-red-500 text-white' :
-                'bg-blue-500 text-white'}
-            `}
-          >
-            <p className="text-sm font-medium">{notification.message}</p>
-          </div>
-        ))}
-      </div>
-    </div>
+        } />
+      </Routes>
+    </Router>
   );
 }
 
