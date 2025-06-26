@@ -47,6 +47,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
   const [demoOTP, setDemoOTP] = useState('');
   const [showReferralInput, setShowReferralInput] = useState(false);
   const [csrfToken, setCsrfToken] = useState('');
+  const [passwordStrength, setPasswordStrength] = useState(0);
 
   useEffect(() => {
     // Generate CSRF token
@@ -57,6 +58,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
     if (isVisible) {
       setError('');
       clearError();
+      resetForm();
     }
   }, [isVisible, clearError]);
 
@@ -66,6 +68,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
       setError(authError);
     }
   }, [authError]);
+
+  // Calculate password strength
+  useEffect(() => {
+    if (!formData.password) {
+      setPasswordStrength(0);
+      return;
+    }
+    
+    let strength = 0;
+    
+    // Length check
+    if (formData.password.length >= 8) strength += 25;
+    
+    // Contains uppercase
+    if (/[A-Z]/.test(formData.password)) strength += 25;
+    
+    // Contains number
+    if (/[0-9]/.test(formData.password)) strength += 25;
+    
+    // Contains special character
+    if (/[^A-Za-z0-9]/.test(formData.password)) strength += 25;
+    
+    setPasswordStrength(strength);
+  }, [formData.password]);
 
   const validateEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -180,6 +206,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
         if (formData.password.length < 8) {
           throw new Error('Password must be at least 8 characters');
         }
+        if (passwordStrength < 75) {
+          throw new Error('Password is too weak. Include uppercase letters, numbers, and special characters.');
+        }
         if (formData.password !== formData.confirmPassword) {
           throw new Error('Passwords do not match');
         }
@@ -279,6 +308,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
         }
         if (formData.password.length < 8) {
           throw new Error('Password must be at least 8 characters');
+        }
+        if (passwordStrength < 75) {
+          throw new Error('Password is too weak. Include uppercase letters, numbers, and special characters.');
         }
         if (formData.password !== formData.confirmPassword) {
           throw new Error('Passwords do not match');
@@ -568,13 +600,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isVisible, onClose, onAuth
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
-                {mode === 'signup' && (
+                {(mode === 'signup' || mode === 'reset-password') && (
                   <div className="mt-1">
                     <div className="flex items-center space-x-1">
-                      <div className={`h-1 flex-1 rounded-full ${formData.password.length >= 8 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                      <div className={`h-1 flex-1 rounded-full ${/[A-Z]/.test(formData.password) ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                      <div className={`h-1 flex-1 rounded-full ${/[0-9]/.test(formData.password) ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                      <div className={`h-1 flex-1 rounded-full ${/[^A-Za-z0-9]/.test(formData.password) ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <div className={`h-1 flex-1 rounded-full ${passwordStrength >= 25 ? 'bg-red-500' : 'bg-gray-300'}`}></div>
+                      <div className={`h-1 flex-1 rounded-full ${passwordStrength >= 50 ? 'bg-yellow-500' : 'bg-gray-300'}`}></div>
+                      <div className={`h-1 flex-1 rounded-full ${passwordStrength >= 75 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <div className={`h-1 flex-1 rounded-full ${passwordStrength >= 100 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
                       Password must be at least 8 characters and include uppercase, numbers, and special characters

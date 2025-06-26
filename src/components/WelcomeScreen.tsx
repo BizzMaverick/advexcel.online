@@ -34,6 +34,175 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showReferralInput, setShowReferralInput] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState('');
+
+  // Calculate password strength
+  useEffect(() => {
+    if (!formData.password) {
+      setPasswordStrength(0);
+      return;
+    }
+    
+    let strength = 0;
+    
+    // Length check
+    if (formData.password.length >= 8) strength += 25;
+    
+    // Contains uppercase
+    if (/[A-Z]/.test(formData.password)) strength += 25;
+    
+    // Contains number
+    if (/[0-9]/.test(formData.password)) strength += 25;
+    
+    // Contains special character
+    if (/[^A-Za-z0-9]/.test(formData.password)) strength += 25;
+    
+    setPasswordStrength(strength);
+  }, [formData.password]);
+
+  useEffect(() => {
+    // Clear errors when auth mode changes
+    setError('');
+    clearError();
+  }, [authMode, clearError]);
+
+  useEffect(() => {
+    // Set error from auth hook
+    if (authError) {
+      setError(authError);
+    }
+  }, [authError]);
+
+  const validateEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  const validatePhone = (phone: string) => {
+    try {
+      return isValidPhoneNumber(phone);
+    } catch {
+      return false;
+    }
+  };
+
+  const validateIdentifier = () => {
+    if (identifierType === 'email') {
+      return validateEmail(formData.identifier);
+    } else {
+      return validatePhone(formData.identifier);
+    }
+  };
+
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    clearError();
+    
+    if (!validateIdentifier()) {
+      setError(`Please enter a valid ${identifierType}`);
+      return;
+    }
+
+    setIsAuthLoading(true);
+
+    try {
+      if (authMode === 'login') {
+        if (!formData.password) {
+          throw new Error('Password is required');
+        }
+
+        const result = await login({
+          identifier: formData.identifier,
+          password: formData.password,
+          rememberDevice: formData.rememberDevice
+        });
+
+        if (!result.success) {
+          throw new Error(result.message || 'Login failed');
+        }
+
+        setSuccess('Login successful!');
+      } else {
+        if (formData.password.length < 8) {
+          throw new Error('Password must be at least 8 characters');
+        }
+        if (passwordStrength < 75) {
+          throw new Error('Password is too weak. Include uppercase letters, numbers, and special characters.');
+        }
+        if (formData.password !== formData.confirmPassword) {
+          throw new Error('Passwords do not match');
+        }
+        if (!formData.acceptTerms) {
+          throw new Error('You must accept the terms and conditions');
+        }
+
+        const result = await register({
+          identifier: formData.identifier,
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          company: formData.company,
+          acceptTerms: formData.acceptTerms
+        });
+
+        if (!result.success) {
+          throw new Error(result.message || 'Registration failed');
+        }
+
+        // Show OTP verification
+        setOtpSent(true);
+        setSuccess('Account created! Please check your email/phone for verification code.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsAuthLoading(true);
+
+    try {
+      if (otp.length !== 6) {
+        throw new Error('Please enter a valid 6-digit verification code');
+      }
+
+      const verifyResult = await fetch('/api/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: formData.identifier, otp })
+      });
+
+      if (!verifyResult.ok) {
+        throw new Error('Invalid verification code');
+      }
+
+      // Login after verification
+      const loginResult = await login({
+        identifier: formData.identifier,
+        password: formData.password,
+        rememberDevice: formData.rememberDevice
+      });
+
+      if (!loginResult.success) {
+        throw new Error(loginResult.message || 'Login failed after verification');
+      }
+
+      setSuccess('Account verified successfully!');
+      setOtpSent(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Verification failed');
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
 
   const features = [
     {
@@ -102,89 +271,89 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
     }
   ];
 
-  const validateEmail = (email: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  };
+  // Show OTP verification form if OTP was sent
+  if (otpSent) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex flex-col">
+        <header className="bg-white/10 backdrop-blur-sm border-b border-white/20 px-6 py-4 sticky top-0 z-10">
+          <div className="flex items-center justify-between max-w-7xl mx-auto">
+            <div className="flex items-center space-x-3">
+              <Logo size="lg" />
+              <div>
+                <h1 className="text-2xl font-bold text-white">Excel Pro AI</h1>
+                <p className="text-sm text-slate-300">Advanced spreadsheet analysis with AI-powered insights</p>
+              </div>
+            </div>
+          </div>
+        </header>
 
-  const validatePhone = (phone: string) => {
-    try {
-      return isValidPhoneNumber(phone);
-    } catch {
-      return false;
-    }
-  };
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 shadow-xl max-w-md w-full">
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold text-white mb-2">Verify Your Account</h3>
+              <p className="text-slate-300">
+                We've sent a verification code to your {identifierType === 'email' ? 'email' : 'phone'}
+              </p>
+            </div>
 
-  const validateIdentifier = () => {
-    if (identifierType === 'email') {
-      return validateEmail(formData.identifier);
-    } else {
-      return validatePhone(formData.identifier);
-    }
-  };
+            <form onSubmit={handleVerifyOTP} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Verification Code
+                </label>
+                <input
+                  type="text"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white text-center text-lg tracking-widest"
+                  placeholder="000000"
+                  maxLength={6}
+                  required
+                />
+              </div>
 
-  const handleAuthSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    clearError();
-    
-    if (!validateIdentifier()) {
-      setError(`Please enter a valid ${identifierType}`);
-      return;
-    }
+              {error && (
+                <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3 text-sm text-red-200">
+                  {error}
+                </div>
+              )}
 
-    setIsAuthLoading(true);
+              {success && (
+                <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-3 text-sm text-green-200">
+                  {success}
+                </div>
+              )}
 
-    try {
-      if (authMode === 'login') {
-        if (!formData.password) {
-          throw new Error('Password is required');
-        }
+              <button
+                type="submit"
+                disabled={isAuthLoading || otp.length !== 6}
+                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white py-3 px-4 rounded-lg hover:from-cyan-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center space-x-2"
+              >
+                {isAuthLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <span>Verifying...</span>
+                  </>
+                ) : (
+                  <span>Verify & Start Free Trial</span>
+                )}
+              </button>
 
-        const result = await login({
-          identifier: formData.identifier,
-          password: formData.password,
-          rememberDevice: formData.rememberDevice
-        });
-
-        if (!result.success) {
-          throw new Error(result.message || 'Login failed');
-        }
-
-        setSuccess('Login successful!');
-      } else {
-        if (formData.password.length < 8) {
-          throw new Error('Password must be at least 8 characters');
-        }
-        if (formData.password !== formData.confirmPassword) {
-          throw new Error('Passwords do not match');
-        }
-        if (!formData.acceptTerms) {
-          throw new Error('You must accept the terms and conditions');
-        }
-
-        const result = await register({
-          identifier: formData.identifier,
-          password: formData.password,
-          confirmPassword: formData.confirmPassword,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          company: formData.company,
-          acceptTerms: formData.acceptTerms
-        });
-
-        if (!result.success) {
-          throw new Error(result.message || 'Registration failed');
-        }
-
-        setSuccess('Account created successfully! Please verify your account.');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setIsAuthLoading(false);
-    }
-  };
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setOtpSent(false)}
+                  className="text-sm text-blue-400 hover:text-blue-300"
+                >
+                  Back to sign up
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex flex-col">
@@ -389,9 +558,22 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
+                {authMode === 'signup' && (
+                  <div className="mt-1">
+                    <div className="flex items-center space-x-1">
+                      <div className={`h-1 flex-1 rounded-full ${passwordStrength >= 25 ? 'bg-red-500' : 'bg-gray-300'}`}></div>
+                      <div className={`h-1 flex-1 rounded-full ${passwordStrength >= 50 ? 'bg-yellow-500' : 'bg-gray-300'}`}></div>
+                      <div className={`h-1 flex-1 rounded-full ${passwordStrength >= 75 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <div className={`h-1 flex-1 rounded-full ${passwordStrength >= 100 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Password must be at least 8 characters and include uppercase, numbers, and special characters
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* Confirm Password (Signup only) */}
+              {/* Confirm Password Input */}
               {authMode === 'signup' && (
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">

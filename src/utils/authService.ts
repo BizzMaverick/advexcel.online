@@ -55,12 +55,33 @@ export class AuthService {
       const user = await this.validateCredentials(credentials.identifier, credentials.password);
       if (!user) {
         await this.handleFailedLogin(credentials.identifier, ipAddress);
-        throw new Error('Invalid credentials');
+        throw new Error('Invalid email or password');
       }
 
       // Check if account is locked
       if (user.security.lockedUntil && new Date() < user.security.lockedUntil) {
-        throw new Error('Account is temporarily locked due to multiple failed attempts');
+        throw new Error('Account is temporarily locked due to multiple failed attempts. Please try again later.');
+      }
+
+      // Check if account is verified
+      if (!user.isVerified) {
+        // Generate and send new OTP for verification
+        const otp = CryptoService.generateOTP();
+        await this.storeOTP(credentials.identifier, otp);
+        
+        if (credentials.identifier.includes('@')) {
+          // For demo, store in localStorage to display in UI
+          localStorage.setItem(`otp_${credentials.identifier}`, JSON.stringify({
+            code: otp,
+            timestamp: Date.now(),
+            attempts: 0
+          }));
+        } else {
+          // Send SMS with OTP
+          await SMSService.sendOTP(credentials.identifier, otp);
+        }
+        
+        throw new Error('Account not verified. A new verification code has been sent to your email/phone.');
       }
 
       // Check MFA requirement
@@ -158,7 +179,7 @@ export class AuthService {
       // Check if user already exists
       const existingUser = await this.findUserByIdentifier(signupData.identifier);
       if (existingUser) {
-        throw new Error('User already exists with this email/phone');
+        throw new Error('An account with this email/phone already exists');
       }
 
       // Hash password
@@ -199,7 +220,12 @@ export class AuthService {
       
       // Send OTP via SMS or email
       if (signupData.identifier.includes('@')) {
-        // Send email OTP (not implemented in this demo)
+        // For demo, store in localStorage to display in UI
+        localStorage.setItem(`otp_${signupData.identifier}`, JSON.stringify({
+          code: otp,
+          timestamp: Date.now(),
+          attempts: 0
+        }));
         console.log(`Email OTP for ${signupData.identifier}: ${otp}`);
       } else {
         // Send SMS OTP
@@ -218,7 +244,7 @@ export class AuthService {
       return {
         success: true,
         user,
-        message: 'Registration successful. Please verify your account.'
+        message: 'Registration successful. Please verify your account with the code sent to your email/phone.'
       };
 
     } catch (error) {
@@ -438,89 +464,6 @@ export class AuthService {
     }
   }
 
-  // MFA Methods
-  static async setupMFA(userId: string): Promise<MFASetup> {
-    const secret = CryptoService.generateMFASecret();
-    const qrCode = await CryptoService.generateMFAQRCode(secret, userId);
-    const backupCodes = CryptoService.generateBackupCodes();
-
-    // Store MFA secret (encrypted)
-    await this.storeMFASecret(userId, secret);
-
-    return {
-      secret,
-      qrCode,
-      backupCodes
-    };
-  }
-
-  static async enableMFA(userId: string, verificationCode: string): Promise<boolean> {
-    const isValid = await this.verifyMFA(userId, verificationCode);
-    if (isValid) {
-      await this.updateUserMFAStatus(userId, true);
-      
-      await AuditService.log({
-        action: 'mfa_enabled',
-        resource: 'user_security',
-        details: { userId },
-        ipAddress: await this.getClientIP(),
-        success: true
-      });
-    }
-    return isValid;
-  }
-
-  static async verifyMFA(userId: string, code: string): Promise<boolean> {
-    try {
-      const secret = await this.getMFASecret(userId);
-      if (!secret) return false;
-
-      return CryptoService.verifyTOTP(code, secret);
-    } catch (error) {
-      return false;
-    }
-  }
-
-  // Permission Methods
-  static hasPermission(user: User, permission: Permission): boolean {
-    return user.permissions.includes(permission) || this.hasAdminRole(user);
-  }
-
-  static hasRole(user: User, role: UserRole): boolean {
-    return user.role === role;
-  }
-
-  static hasAdminRole(user: User): boolean {
-    return user.role === UserRole.ADMIN;
-  }
-
-  static getDefaultPermissions(role: UserRole): Permission[] {
-    switch (role) {
-      case UserRole.ADMIN:
-        return Object.values(Permission);
-      case UserRole.USER:
-        return [
-          Permission.READ_DATA,
-          Permission.WRITE_DATA,
-          Permission.EXPORT_DATA,
-          Permission.IMPORT_DATA,
-          Permission.VIEW_ANALYTICS,
-          Permission.CREATE_REPORTS,
-          Permission.USE_AI_FEATURES,
-          Permission.CREATE_FORMULAS,
-          Permission.MANAGE_WORKBOOKS
-        ];
-      case UserRole.VIEWER:
-        return [
-          Permission.READ_DATA,
-          Permission.VIEW_ANALYTICS
-        ];
-      default:
-        return [];
-    }
-  }
-
-  // Security Methods
   static async validateSession(): Promise<boolean> {
     try {
       const tokens = await this.getStoredTokens();
@@ -713,17 +656,15 @@ export class AuthService {
   }
 
   private static async storeUserData(user: User): Promise<void> {
-    const encryptedUser = await CryptoService.encrypt(JSON.stringify(user));
-    localStorage.setItem(this.USER_STORAGE_KEY, encryptedUser);
+    localStorage.setItem(this.USER_STORAGE_KEY, JSON.stringify(user));
   }
 
   private static async getStoredUser(): Promise<User | null> {
     try {
-      const encryptedUser = localStorage.getItem(this.USER_STORAGE_KEY);
-      if (!encryptedUser) return null;
+      const userData = localStorage.getItem(this.USER_STORAGE_KEY);
+      if (!userData) return null;
 
-      const decryptedUser = await CryptoService.decrypt(encryptedUser);
-      return JSON.parse(decryptedUser);
+      return JSON.parse(userData);
     } catch {
       return null;
     }
@@ -735,6 +676,28 @@ export class AuthService {
     localStorage.removeItem(this.SESSION_STORAGE_KEY);
   }
 
+  // MFA Methods
+  private static async verifyMFA(userId: string, code: string): Promise<boolean> {
+    try {
+      const secret = await this.getMFASecret(userId);
+      if (!secret) return false;
+
+      return CryptoService.verifyTOTP(code, secret);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  private static async getMFASecret(userId: string): Promise<string | null> {
+    try {
+      const encryptedSecret = localStorage.getItem(`mfa_${userId}`);
+      if (!encryptedSecret) return null;
+      return await CryptoService.decrypt(encryptedSecret);
+    } catch {
+      return null;
+    }
+  }
+
   // Placeholder methods for production implementation
   private static async findUserByIdentifier(identifier: string): Promise<User | null> {
     const userData = localStorage.getItem(`user_${identifier}`);
@@ -743,10 +706,23 @@ export class AuthService {
 
   private static async findUserById(id: string): Promise<User | null> {
     // In production, query database by user ID
-    return await this.getStoredUser();
+    // For demo, search through all stored users
+    const keys = Object.keys(localStorage);
+    for (const key of keys) {
+      if (key.startsWith('user_')) {
+        const userData = localStorage.getItem(key);
+        if (userData) {
+          const { user } = JSON.parse(userData);
+          if (user.id === id) {
+            return user;
+          }
+        }
+      }
+    }
+    return null;
   }
 
-  private static async storeUser(user: User, hashedPassword: string): Promise<void> {
+  static async storeUser(user: User, hashedPassword: string): Promise<void> {
     const identifier = user.email || user.phoneNumber;
     if (identifier) {
       localStorage.setItem(`user_${identifier}`, JSON.stringify({ user, hashedPassword }));
@@ -773,26 +749,29 @@ export class AuthService {
     }
   }
 
-  private static async storeMFASecret(userId: string, secret: string): Promise<void> {
-    const encryptedSecret = await CryptoService.encrypt(secret);
-    localStorage.setItem(`mfa_${userId}`, encryptedSecret);
-  }
-
-  private static async getMFASecret(userId: string): Promise<string | null> {
-    try {
-      const encryptedSecret = localStorage.getItem(`mfa_${userId}`);
-      if (!encryptedSecret) return null;
-      return await CryptoService.decrypt(encryptedSecret);
-    } catch {
-      return null;
-    }
-  }
-
-  private static async updateUserMFAStatus(userId: string, enabled: boolean): Promise<void> {
-    const user = await this.findUserById(userId);
-    if (user) {
-      user.security.mfaEnabled = enabled;
-      await this.updateUser(user);
+  private static getDefaultPermissions(role: UserRole): Permission[] {
+    switch (role) {
+      case UserRole.ADMIN:
+        return Object.values(Permission);
+      case UserRole.USER:
+        return [
+          Permission.READ_DATA,
+          Permission.WRITE_DATA,
+          Permission.EXPORT_DATA,
+          Permission.IMPORT_DATA,
+          Permission.VIEW_ANALYTICS,
+          Permission.CREATE_REPORTS,
+          Permission.USE_AI_FEATURES,
+          Permission.CREATE_FORMULAS,
+          Permission.MANAGE_WORKBOOKS
+        ];
+      case UserRole.VIEWER:
+        return [
+          Permission.READ_DATA,
+          Permission.VIEW_ANALYTICS
+        ];
+      default:
+        return [];
     }
   }
 }
