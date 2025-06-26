@@ -50,6 +50,10 @@ export class ExcelFormulaEngine {
         return this.handleIndexMatchRequest(request);
       }
 
+      if (this.isHlookupRequest(normalizedRequest)) {
+        return this.handleHlookupRequest(request);
+      }
+
       // Conditional logic
       if (this.isIfRequest(normalizedRequest)) {
         return this.handleIfRequest(request);
@@ -57,6 +61,10 @@ export class ExcelFormulaEngine {
 
       if (this.isNestedIfRequest(normalizedRequest)) {
         return this.handleNestedIfRequest(request);
+      }
+
+      if (this.isIfsRequest(normalizedRequest)) {
+        return this.handleIfsRequest(request);
       }
 
       // Text functions
@@ -81,6 +89,21 @@ export class ExcelFormulaEngine {
       // Statistical functions
       if (this.isStatisticalRequest(normalizedRequest)) {
         return this.handleStatisticalRequest(request);
+      }
+
+      // Financial functions
+      if (this.isFinancialRequest(normalizedRequest)) {
+        return this.handleFinancialRequest(request);
+      }
+
+      // Logical functions
+      if (this.isLogicalRequest(normalizedRequest)) {
+        return this.handleLogicalRequest(request);
+      }
+
+      // Conditional aggregation
+      if (this.isConditionalAggregationRequest(normalizedRequest)) {
+        return this.handleConditionalAggregationRequest(request);
       }
 
       return {
@@ -122,12 +145,19 @@ export class ExcelFormulaEngine {
   }
 
   private isVlookupRequest(request: string): boolean {
-    return request.includes('vlookup') || request.includes('lookup') || 
+    return request.includes('vlookup') || 
+           (request.includes('lookup') && request.includes('vertical')) || 
            (request.includes('find') && request.includes('table'));
   }
 
+  private isHlookupRequest(request: string): boolean {
+    return request.includes('hlookup') || 
+           (request.includes('lookup') && request.includes('horizontal'));
+  }
+
   private isIndexMatchRequest(request: string): boolean {
-    return request.includes('index') && request.includes('match');
+    return (request.includes('index') && request.includes('match')) || 
+           request.includes('index match');
   }
 
   private isIfRequest(request: string): boolean {
@@ -136,7 +166,13 @@ export class ExcelFormulaEngine {
 
   private isNestedIfRequest(request: string): boolean {
     return request.includes('nested if') || request.includes('multiple conditions') ||
-           (request.includes('if') && (request.includes('ifs') || request.includes('categorize')));
+           (request.includes('if') && request.includes('else if'));
+  }
+
+  private isIfsRequest(request: string): boolean {
+    return request.includes('ifs') || 
+           (request.includes('multiple') && request.includes('conditions')) ||
+           (request.includes('if') && request.includes('categorize'));
   }
 
   private isConcatenateRequest(request: string): boolean {
@@ -147,12 +183,14 @@ export class ExcelFormulaEngine {
   private isTextManipulationRequest(request: string): boolean {
     return request.includes('uppercase') || request.includes('lowercase') ||
            request.includes('extract') || request.includes('substring') ||
-           request.includes('left') || request.includes('right') || request.includes('mid');
+           request.includes('left') || request.includes('right') || request.includes('mid') ||
+           request.includes('trim') || request.includes('text');
   }
 
   private isDateRequest(request: string): boolean {
     return request.includes('date') || request.includes('days') || 
-           request.includes('year') || request.includes('month');
+           request.includes('year') || request.includes('month') ||
+           request.includes('today') || request.includes('now');
   }
 
   private isConditionalFormattingRequest(request: string): boolean {
@@ -162,7 +200,28 @@ export class ExcelFormulaEngine {
 
   private isStatisticalRequest(request: string): boolean {
     return request.includes('median') || request.includes('mode') || 
-           request.includes('standard deviation') || request.includes('variance');
+           request.includes('standard deviation') || request.includes('variance') ||
+           request.includes('percentile') || request.includes('quartile');
+  }
+
+  private isFinancialRequest(request: string): boolean {
+    return request.includes('pmt') || request.includes('payment') ||
+           request.includes('loan') || request.includes('interest') ||
+           request.includes('fv') || request.includes('future value') ||
+           request.includes('pv') || request.includes('present value') ||
+           request.includes('npv') || request.includes('irr');
+  }
+
+  private isLogicalRequest(request: string): boolean {
+    return request.includes('and') || request.includes('or') || 
+           request.includes('not') || request.includes('xor') ||
+           request.includes('logical');
+  }
+
+  private isConditionalAggregationRequest(request: string): boolean {
+    return request.includes('sumif') || request.includes('countif') || 
+           request.includes('averageif') || request.includes('sumifs') ||
+           request.includes('countifs') || request.includes('averageifs');
   }
 
   // Handler methods
@@ -254,18 +313,41 @@ export class ExcelFormulaEngine {
     const tableRange = this.extractTableRange(request);
     const columnIndex = this.extractColumnIndex(request);
     const targetCell = this.extractTargetCell(request);
+    const exactMatch = request.includes('exact') ? 'FALSE' : 'TRUE';
 
     if (!tableRange) {
       throw new Error('Could not identify the lookup table range. Please specify like A1:C10');
     }
 
-    const formula = `=VLOOKUP(${lookupValue || 'A1'}, ${tableRange}, ${columnIndex || 2}, FALSE)`;
+    const formula = `=VLOOKUP(${lookupValue || 'A1'}, ${tableRange}, ${columnIndex || 2}, ${exactMatch})`;
 
     return {
       success: true,
       formula,
       result: 'VLOOKUP formula created',
-      explanation: `Created VLOOKUP formula to find ${lookupValue || 'lookup value'} in table ${tableRange}`,
+      explanation: `Created VLOOKUP formula to find ${lookupValue || 'lookup value'} in table ${tableRange}, column ${columnIndex || 2}, with ${exactMatch === 'FALSE' ? 'exact' : 'approximate'} matching`,
+      affectedCells: targetCell ? [targetCell] : []
+    };
+  }
+
+  private handleHlookupRequest(request: string): FormulaResult {
+    const lookupValue = this.extractLookupValue(request);
+    const tableRange = this.extractTableRange(request);
+    const rowIndex = this.extractRowIndex(request);
+    const targetCell = this.extractTargetCell(request);
+    const exactMatch = request.includes('exact') ? 'FALSE' : 'TRUE';
+
+    if (!tableRange) {
+      throw new Error('Could not identify the lookup table range. Please specify like A1:C10');
+    }
+
+    const formula = `=HLOOKUP(${lookupValue || 'A1'}, ${tableRange}, ${rowIndex || 2}, ${exactMatch})`;
+
+    return {
+      success: true,
+      formula,
+      result: 'HLOOKUP formula created',
+      explanation: `Created HLOOKUP formula to find ${lookupValue || 'lookup value'} in table ${tableRange}, row ${rowIndex || 2}, with ${exactMatch === 'FALSE' ? 'exact' : 'approximate'} matching`,
       affectedCells: targetCell ? [targetCell] : []
     };
   }
@@ -282,7 +364,7 @@ export class ExcelFormulaEngine {
       success: true,
       formula,
       result: 'INDEX MATCH formula created',
-      explanation: `Created INDEX MATCH formula to lookup ${lookupValue || 'value'} in ${lookupArray || 'column A'}`,
+      explanation: `Created INDEX MATCH formula to lookup ${lookupValue || 'value'} in ${lookupArray || 'column A'} and return corresponding value from ${returnArray || 'column B'}`,
       affectedCells: targetCell ? [targetCell] : []
     };
   }
@@ -299,7 +381,7 @@ export class ExcelFormulaEngine {
       success: true,
       formula,
       result: 'IF formula created',
-      explanation: `Created IF formula with condition: ${condition || 'A1>100'}`,
+      explanation: `Created IF formula with condition: ${condition || 'A1>100'}, returning "${trueValue || 'High'}" if true, otherwise "${falseValue || 'Low'}"`,
       affectedCells: targetCell ? [targetCell] : []
     };
   }
@@ -309,17 +391,47 @@ export class ExcelFormulaEngine {
     
     // Handle score categorization example
     if (request.includes('score') || request.includes('grade')) {
-      const formula = `=IFS(A1>=90, "A", A1>=80, "B", A1>=70, "C", A1>=60, "D", TRUE, "F")`;
+      const formula = `=IF(A1>=90, "A", IF(A1>=80, "B", IF(A1>=70, "C", IF(A1>=60, "D", "F"))))`;
       return {
         success: true,
         formula,
         result: 'Grade categorization formula created',
-        explanation: 'Created IFS formula for grade categorization (90+=A, 80+=B, 70+=C, 60+=D, <60=F)',
+        explanation: 'Created nested IF formula for grade categorization (90+=A, 80+=B, 70+=C, 60+=D, <60=F)',
         affectedCells: targetCell ? [targetCell] : []
       };
     }
 
-    const formula = `=IFS(A1>100, "High", A1>50, "Medium", TRUE, "Low")`;
+    const formula = `=IF(A1>100, "High", IF(A1>50, "Medium", "Low"))`;
+    return {
+      success: true,
+      formula,
+      result: 'Nested IF formula created',
+      explanation: 'Created nested IF formula with multiple conditions',
+      affectedCells: targetCell ? [targetCell] : []
+    };
+  }
+
+  private handleIfsRequest(request: string): FormulaResult {
+    const targetCell = this.extractTargetCell(request);
+    
+    // Extract conditions from request
+    const conditions = this.extractMultipleConditions(request);
+    
+    if (conditions.length > 0) {
+      const conditionPairs = conditions.map(c => `${c.condition}, "${c.value}"`).join(', ');
+      const formula = `=IFS(${conditionPairs}, TRUE, "Other")`;
+      
+      return {
+        success: true,
+        formula,
+        result: 'IFS formula created',
+        explanation: `Created IFS formula with ${conditions.length} conditions`,
+        affectedCells: targetCell ? [targetCell] : []
+      };
+    }
+    
+    // Default IFS formula
+    const formula = `=IFS(A1>100, "High", A1>50, "Medium", A1>0, "Low", TRUE, "N/A")`;
     return {
       success: true,
       formula,
@@ -342,7 +454,7 @@ export class ExcelFormulaEngine {
       success: true,
       formula,
       result: 'CONCATENATE formula created',
-      explanation: `Created CONCATENATE formula to join ${cells.length >= 2 ? cells.join(' and ') : 'A1 and B1'}`,
+      explanation: `Created CONCATENATE formula to join ${cells.length >= 2 ? cells.join(' and ') : 'A1 and B1'} with "${separator}" separator`,
       affectedCells: targetCell ? [targetCell] : []
     };
   }
@@ -385,6 +497,31 @@ export class ExcelFormulaEngine {
       };
     }
 
+    if (request.includes('right') || request.includes('last')) {
+      const numChars = this.extractNumber(request) || 5;
+      const formula = `=RIGHT(${sourceCell || 'A1'}, ${numChars})`;
+      return {
+        success: true,
+        formula,
+        result: 'RIGHT formula created',
+        explanation: `Created RIGHT formula to extract last ${numChars} characters from ${sourceCell || 'A1'}`,
+        affectedCells: targetCell ? [targetCell] : []
+      };
+    }
+
+    if (request.includes('mid') || request.includes('middle') || request.includes('extract')) {
+      const startPos = this.extractStartPosition(request) || 2;
+      const numChars = this.extractNumber(request) || 3;
+      const formula = `=MID(${sourceCell || 'A1'}, ${startPos}, ${numChars})`;
+      return {
+        success: true,
+        formula,
+        result: 'MID formula created',
+        explanation: `Created MID formula to extract ${numChars} characters from position ${startPos} in ${sourceCell || 'A1'}`,
+        affectedCells: targetCell ? [targetCell] : []
+      };
+    }
+
     const formula = `=TRIM(${sourceCell || 'A1'})`;
     return {
       success: true,
@@ -398,7 +535,7 @@ export class ExcelFormulaEngine {
   private handleDateRequest(request: string): FormulaResult {
     const targetCell = this.extractTargetCell(request);
     
-    if (request.includes('days between')) {
+    if (request.includes('days between') || request.includes('difference between')) {
       const cells = this.extractCellReferences(request);
       const formula = cells.length >= 2 ? 
         `=DATEDIF(${cells[0]}, ${cells[1]}, "D")` :
@@ -408,7 +545,7 @@ export class ExcelFormulaEngine {
         success: true,
         formula,
         result: 'DATEDIF formula created',
-        explanation: `Created DATEDIF formula to calculate days between dates`,
+        explanation: `Created DATEDIF formula to calculate days between dates in ${cells.length >= 2 ? cells.join(' and ') : 'A1 and B1'}`,
         affectedCells: targetCell ? [targetCell] : []
       };
     }
@@ -440,11 +577,59 @@ export class ExcelFormulaEngine {
       };
     }
 
+    if (request.includes('month')) {
+      const sourceCell = this.extractSourceCell(request);
+      const formula = `=MONTH(${sourceCell || 'A1'})`;
+      
+      return {
+        success: true,
+        formula,
+        result: 'MONTH formula created',
+        explanation: `Created MONTH formula to extract month from ${sourceCell || 'A1'}`,
+        affectedCells: targetCell ? [targetCell] : []
+      };
+    }
+
+    if (request.includes('day')) {
+      const sourceCell = this.extractSourceCell(request);
+      const formula = `=DAY(${sourceCell || 'A1'})`;
+      
+      return {
+        success: true,
+        formula,
+        result: 'DAY formula created',
+        explanation: `Created DAY formula to extract day from ${sourceCell || 'A1'}`,
+        affectedCells: targetCell ? [targetCell] : []
+      };
+    }
+
+    if (request.includes('today')) {
+      const formula = `=TODAY()`;
+      return {
+        success: true,
+        formula,
+        result: new Date().toLocaleDateString(),
+        explanation: 'Created TODAY formula to get current date',
+        affectedCells: targetCell ? [targetCell] : []
+      };
+    }
+
+    if (request.includes('now')) {
+      const formula = `=NOW()`;
+      return {
+        success: true,
+        formula,
+        result: new Date().toLocaleString(),
+        explanation: 'Created NOW formula to get current date and time',
+        affectedCells: targetCell ? [targetCell] : []
+      };
+    }
+
     const formula = `=TODAY()`;
     return {
       success: true,
       formula,
-      result: 'TODAY formula created',
+      result: new Date().toLocaleDateString(),
       explanation: 'Created TODAY formula to get current date',
       affectedCells: targetCell ? [targetCell] : []
     };
@@ -512,12 +697,210 @@ export class ExcelFormulaEngine {
       };
     }
 
+    if (request.includes('standard deviation') || request.includes('stdev')) {
+      const formula = `=STDEV(${range})`;
+      return {
+        success: true,
+        formula,
+        result: 'STDEV formula created',
+        explanation: `Created STDEV formula for range ${range}`,
+        affectedCells: targetCell ? [targetCell] : []
+      };
+    }
+
+    if (request.includes('variance') || request.includes('var')) {
+      const formula = `=VAR(${range})`;
+      return {
+        success: true,
+        formula,
+        result: 'VAR formula created',
+        explanation: `Created VAR formula for range ${range}`,
+        affectedCells: targetCell ? [targetCell] : []
+      };
+    }
+
     const formula = `=STDEV(${range})`;
     return {
       success: true,
       formula,
       result: 'STDEV formula created',
       explanation: `Created STDEV formula for range ${range}`,
+      affectedCells: targetCell ? [targetCell] : []
+    };
+  }
+
+  private handleFinancialRequest(request: string): FormulaResult {
+    const targetCell = this.extractTargetCell(request);
+    
+    if (request.includes('pmt') || request.includes('payment') || request.includes('loan')) {
+      const rate = this.extractRate(request) || 0.05;
+      const nper = this.extractPeriods(request) || 36;
+      const pv = this.extractPrincipal(request) || 10000;
+      
+      const formula = `=PMT(${rate}/12, ${nper}, ${pv})`;
+      return {
+        success: true,
+        formula,
+        result: 'PMT formula created',
+        explanation: `Created PMT formula to calculate monthly payment for a loan of ${pv} over ${nper} months at ${rate*100}% annual interest`,
+        affectedCells: targetCell ? [targetCell] : []
+      };
+    }
+
+    if (request.includes('fv') || request.includes('future value')) {
+      const rate = this.extractRate(request) || 0.05;
+      const nper = this.extractPeriods(request) || 36;
+      const pmt = this.extractPayment(request) || 100;
+      
+      const formula = `=FV(${rate}/12, ${nper}, ${pmt})`;
+      return {
+        success: true,
+        formula,
+        result: 'FV formula created',
+        explanation: `Created FV formula to calculate future value of ${pmt} monthly payments over ${nper} months at ${rate*100}% annual interest`,
+        affectedCells: targetCell ? [targetCell] : []
+      };
+    }
+
+    if (request.includes('pv') || request.includes('present value')) {
+      const rate = this.extractRate(request) || 0.05;
+      const nper = this.extractPeriods(request) || 36;
+      const pmt = this.extractPayment(request) || 100;
+      
+      const formula = `=PV(${rate}/12, ${nper}, ${pmt})`;
+      return {
+        success: true,
+        formula,
+        result: 'PV formula created',
+        explanation: `Created PV formula to calculate present value of ${pmt} monthly payments over ${nper} months at ${rate*100}% annual interest`,
+        affectedCells: targetCell ? [targetCell] : []
+      };
+    }
+
+    // Default to PMT
+    const formula = `=PMT(0.05/12, 36, 10000)`;
+    return {
+      success: true,
+      formula,
+      result: 'PMT formula created',
+      explanation: 'Created PMT formula to calculate monthly payment for a loan',
+      affectedCells: targetCell ? [targetCell] : []
+    };
+  }
+
+  private handleLogicalRequest(request: string): FormulaResult {
+    const targetCell = this.extractTargetCell(request);
+    const conditions = this.extractMultipleConditions(request);
+    
+    if (request.includes('and')) {
+      const formula = conditions.length >= 2 ? 
+        `=AND(${conditions.map(c => c.condition).join(', ')})` :
+        `=AND(A1>0, B1>0)`;
+      
+      return {
+        success: true,
+        formula,
+        result: 'AND formula created',
+        explanation: `Created AND formula to check if all conditions are true`,
+        affectedCells: targetCell ? [targetCell] : []
+      };
+    }
+
+    if (request.includes('or')) {
+      const formula = conditions.length >= 2 ? 
+        `=OR(${conditions.map(c => c.condition).join(', ')})` :
+        `=OR(A1>0, B1>0)`;
+      
+      return {
+        success: true,
+        formula,
+        result: 'OR formula created',
+        explanation: `Created OR formula to check if any condition is true`,
+        affectedCells: targetCell ? [targetCell] : []
+      };
+    }
+
+    if (request.includes('not')) {
+      const condition = conditions.length > 0 ? conditions[0].condition : 'A1>0';
+      const formula = `=NOT(${condition})`;
+      
+      return {
+        success: true,
+        formula,
+        result: 'NOT formula created',
+        explanation: `Created NOT formula to negate the condition`,
+        affectedCells: targetCell ? [targetCell] : []
+      };
+    }
+
+    // Default to AND
+    const formula = `=AND(A1>0, B1>0)`;
+    return {
+      success: true,
+      formula,
+      result: 'AND formula created',
+      explanation: 'Created AND formula to check if all conditions are true',
+      affectedCells: targetCell ? [targetCell] : []
+    };
+  }
+
+  private handleConditionalAggregationRequest(request: string): FormulaResult {
+    const range = this.extractRange(request);
+    const criteria = this.extractCriteria(request);
+    const targetCell = this.extractTargetCell(request);
+    const sumRange = this.extractSumRange(request);
+    
+    if (!range) {
+      throw new Error('Could not identify the range. Please specify a range like A1:A10');
+    }
+
+    if (request.includes('sumif')) {
+      const formula = sumRange ? 
+        `=SUMIF(${range}, "${criteria || '>0'}", ${sumRange})` :
+        `=SUMIF(${range}, "${criteria || '>0'}")`;
+      
+      return {
+        success: true,
+        formula,
+        result: 'SUMIF formula created',
+        explanation: `Created SUMIF formula to sum values in ${sumRange || range} where ${range} meets criteria: ${criteria || '>0'}`,
+        affectedCells: targetCell ? [targetCell] : []
+      };
+    }
+
+    if (request.includes('countif')) {
+      const formula = `=COUNTIF(${range}, "${criteria || '>0'}")`;
+      
+      return {
+        success: true,
+        formula,
+        result: 'COUNTIF formula created',
+        explanation: `Created COUNTIF formula to count cells in ${range} that meet criteria: ${criteria || '>0'}`,
+        affectedCells: targetCell ? [targetCell] : []
+      };
+    }
+
+    if (request.includes('averageif')) {
+      const formula = sumRange ? 
+        `=AVERAGEIF(${range}, "${criteria || '>0'}", ${sumRange})` :
+        `=AVERAGEIF(${range}, "${criteria || '>0'}")`;
+      
+      return {
+        success: true,
+        formula,
+        result: 'AVERAGEIF formula created',
+        explanation: `Created AVERAGEIF formula to average values in ${sumRange || range} where ${range} meets criteria: ${criteria || '>0'}`,
+        affectedCells: targetCell ? [targetCell] : []
+      };
+    }
+
+    // Default to SUMIF
+    const formula = `=SUMIF(${range}, ">0")`;
+    return {
+      success: true,
+      formula,
+      result: 'SUMIF formula created',
+      explanation: `Created SUMIF formula to sum values in ${range} where values are greater than 0`,
       affectedCells: targetCell ? [targetCell] : []
     };
   }
@@ -561,6 +944,11 @@ export class ExcelFormulaEngine {
     return indexMatch ? parseInt(indexMatch[1]) : null;
   }
 
+  private extractRowIndex(request: string): number | null {
+    const indexMatch = request.match(/row\s+(\d+)/i);
+    return indexMatch ? parseInt(indexMatch[1]) : null;
+  }
+
   private extractLookupArray(request: string): string | null {
     const arrayMatch = request.match(/from\s+(?:range\s+)?([A-Z]+:[A-Z]+)/i);
     return arrayMatch ? arrayMatch[1] : null;
@@ -586,6 +974,38 @@ export class ExcelFormulaEngine {
     return falseMatch ? falseMatch[1].trim() : null;
   }
 
+  private extractMultipleConditions(request: string): Array<{ condition: string; value: string }> {
+    const conditions: Array<{ condition: string; value: string }> = [];
+    
+    // Try to extract condition-value pairs
+    const conditionValuePairs = request.match(/if\s+(.+?)\s+then\s+(.+?)(?:\s+else\s+if|$)/gi);
+    
+    if (conditionValuePairs) {
+      conditionValuePairs.forEach(pair => {
+        const match = pair.match(/if\s+(.+?)\s+then\s+(.+?)$/i);
+        if (match) {
+          conditions.push({
+            condition: match[1].trim(),
+            value: match[2].trim().replace(/^["']|["']$/g, '') // Remove quotes
+          });
+        }
+      });
+    }
+    
+    // If no conditions found, try to extract from categorization language
+    if (conditions.length === 0 && request.includes('categorize')) {
+      const categories = [
+        { condition: 'A1>=90', value: 'A' },
+        { condition: 'A1>=80', value: 'B' },
+        { condition: 'A1>=70', value: 'C' },
+        { condition: 'A1>=60', value: 'D' }
+      ];
+      return categories;
+    }
+    
+    return conditions;
+  }
+
   private extractCellReferences(request: string): string[] {
     const cellMatches = request.match(/([A-Z]+\d+)/gi);
     return cellMatches || [];
@@ -601,6 +1021,11 @@ export class ExcelFormulaEngine {
   private extractNumber(request: string): number | null {
     const numberMatch = request.match(/(\d+)/);
     return numberMatch ? parseInt(numberMatch[1]) : null;
+  }
+
+  private extractStartPosition(request: string): number | null {
+    const posMatch = request.match(/(?:position|start|from)\s+(\d+)/i);
+    return posMatch ? parseInt(posMatch[1]) : null;
   }
 
   private extractFormattingCondition(request: string): string | null {
@@ -619,6 +1044,36 @@ export class ExcelFormulaEngine {
     if (request.includes('yellow')) return 'yellow';
     if (request.includes('blue')) return 'blue';
     return 'blue';
+  }
+
+  private extractRate(request: string): number | null {
+    const rateMatch = request.match(/(?:rate|interest)\s+(\d+(?:\.\d+)?)/i);
+    return rateMatch ? parseFloat(rateMatch[1]) / 100 : null;
+  }
+
+  private extractPeriods(request: string): number | null {
+    const periodMatch = request.match(/(?:periods|months|years|nper)\s+(\d+)/i);
+    return periodMatch ? parseInt(periodMatch[1]) : null;
+  }
+
+  private extractPrincipal(request: string): number | null {
+    const principalMatch = request.match(/(?:principal|loan|amount|pv)\s+(\d+)/i);
+    return principalMatch ? parseInt(principalMatch[1]) : null;
+  }
+
+  private extractPayment(request: string): number | null {
+    const paymentMatch = request.match(/(?:payment|pmt)\s+(\d+)/i);
+    return paymentMatch ? parseInt(paymentMatch[1]) : null;
+  }
+
+  private extractCriteria(request: string): string | null {
+    const criteriaMatch = request.match(/(?:criteria|where|if)\s+(.+?)(?:\s+in|\s+to|\s+from|$)/i);
+    return criteriaMatch ? criteriaMatch[1].trim() : null;
+  }
+
+  private extractSumRange(request: string): string | null {
+    const sumRangeMatch = request.match(/(?:sum range|sum from)\s+([A-Z]+\d+:[A-Z]+\d+)/i);
+    return sumRangeMatch ? sumRangeMatch[1] : null;
   }
 
   // Calculation methods

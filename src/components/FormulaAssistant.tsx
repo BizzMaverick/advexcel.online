@@ -36,6 +36,7 @@ export const FormulaAssistant: React.FC<FormulaAssistantProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [history, setHistory] = useState<Array<{ request: string; result: FormulaResult }>>([]);
   const [showExamples, setShowExamples] = useState(false);
+  const [copiedFormula, setCopiedFormula] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const formulaEngine = new ExcelFormulaEngine(cells);
 
@@ -60,7 +61,8 @@ export const FormulaAssistant: React.FC<FormulaAssistantProps> = ({
       examples: [
         "Use VLOOKUP to find product price from table A1:C10 based on product name in D1",
         "Create INDEX MATCH formula to lookup employee salary from range A1:B50",
-        "Find the position of 'Sales' in column A using MATCH function"
+        "Find the position of 'Sales' in column A using MATCH function",
+        "Use HLOOKUP to find data in row 2 based on header in row 1"
       ]
     },
     {
@@ -68,7 +70,8 @@ export const FormulaAssistant: React.FC<FormulaAssistantProps> = ({
       examples: [
         "Create IF formula: if A1 > 100 then 'High' else 'Low'",
         "Use nested IF to categorize scores: 90+ = A, 80+ = B, 70+ = C, else F",
-        "Apply IFS function for multiple conditions on column B"
+        "Apply IFS function for multiple conditions on column B",
+        "Create logical AND formula to check if A1>0 and B1>0"
       ]
     },
     {
@@ -76,7 +79,8 @@ export const FormulaAssistant: React.FC<FormulaAssistantProps> = ({
       examples: [
         "Highlight all values above 1000 in column B with red background",
         "Color cells in range A1:A20 green if they contain 'Complete'",
-        "Apply gradient formatting to sales data in column C"
+        "Apply gradient formatting to sales data in column C",
+        "Format cells with bold text where value > 100"
       ]
     },
     {
@@ -84,7 +88,8 @@ export const FormulaAssistant: React.FC<FormulaAssistantProps> = ({
       examples: [
         "Concatenate first name in A1 and last name in B1 with space between",
         "Extract first 5 characters from text in column D",
-        "Convert all text in column E to uppercase"
+        "Convert all text in column E to uppercase",
+        "Use TRIM to remove extra spaces from text in A1"
       ]
     },
     {
@@ -92,7 +97,26 @@ export const FormulaAssistant: React.FC<FormulaAssistantProps> = ({
       examples: [
         "Calculate days between two dates in A1 and B1",
         "Add 30 days to the date in C1",
-        "Extract year from date in column F"
+        "Extract year from date in column F",
+        "Get current date with TODAY() function in cell A1"
+      ]
+    },
+    {
+      category: "Financial Functions",
+      examples: [
+        "Calculate loan payment (PMT) with rate 5%, 36 periods, 10000 principal",
+        "Find future value (FV) of 100 monthly payments at 3% annual interest",
+        "Calculate present value (PV) of future payments",
+        "Determine interest rate (RATE) for loan terms"
+      ]
+    },
+    {
+      category: "Statistical Functions",
+      examples: [
+        "Find the median value in range A1:A20",
+        "Calculate standard deviation of data in column B",
+        "Count values that meet specific criteria with COUNTIF",
+        "Sum values based on criteria with SUMIF"
       ]
     }
   ];
@@ -105,6 +129,7 @@ export const FormulaAssistant: React.FC<FormulaAssistantProps> = ({
     try {
       const result = await formulaEngine.processNaturalLanguageRequest(request);
       setResult(result);
+      setCopiedFormula(false);
       
       if (result.success) {
         // Apply the formula or formatting
@@ -144,6 +169,8 @@ export const FormulaAssistant: React.FC<FormulaAssistantProps> = ({
   const copyFormula = () => {
     if (result?.formula) {
       navigator.clipboard.writeText(result.formula);
+      setCopiedFormula(true);
+      setTimeout(() => setCopiedFormula(false), 2000);
     }
   };
 
@@ -251,8 +278,17 @@ export const FormulaAssistant: React.FC<FormulaAssistantProps> = ({
                               onClick={copyFormula}
                               className="flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-700"
                             >
-                              <Copy className="h-3 w-3" />
-                              <span>Copy</span>
+                              {copiedFormula ? (
+                                <>
+                                  <CheckCircle className="h-3 w-3 text-green-600" />
+                                  <span className="text-green-600">Copied!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="h-3 w-3" />
+                                  <span>Copy</span>
+                                </>
+                              )}
                             </button>
                           </div>
                           
