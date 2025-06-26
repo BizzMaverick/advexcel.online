@@ -98,6 +98,192 @@ function App() {
   const [suggestions, setSuggestions] = useState<SuggestionFeedback[]>([]);
   const [commandBarFocused, setCommandBarFocused] = useState(false);
 
+  const addNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const id = Date.now();
+    setNotifications(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 5000);
+  };
+
+  const checkFeatureAccess = (): boolean => {
+    if (!isAuthenticated) {
+      setShowAuthModal(true);
+      addNotification('Please log in to access this feature.', 'info');
+      return false;
+    }
+    return true;
+  };
+
+  const handleLogoClick = useCallback(() => {
+    setWorkbook(null);
+    setSpreadsheetData({ cells: {}, selectedCell: undefined, selectedRange: [] });
+    setShowAnalyticsPanel(false);
+    setShowQueryResults(false);
+    setShowExportModal(false);
+    setShowPivotPanel(false);
+    setShowFormulaAssistant(false);
+    setQueryResult(null);
+    setIsDataLoaded(false);
+    setIsLoading(false);
+    setShowWelcomeScreen(true);
+    setNotifications([]);
+    
+    addNotification('Application reset - Ready for new data import', 'info');
+  }, []);
+
+  const handleImportFile = useCallback(async () => {
+    if (!checkFeatureAccess()) return;
+    
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv,.xlsx,.xls,.xlsm,.xlsb,.ods,.pdf,.doc,.docx,.txt';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      const canProcess = LargeFileHandler.canProcessFile(file);
+      if (!canProcess.canProcess) {
+        addNotification(canProcess.reason || 'Cannot process this file', 'error');
+        return;
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        const fileInfo = LargeFileHandler.getFileInfo(file);
+        addNotification(
+          `Large file detected (${fileInfo.size}). Estimated processing time: ${fileInfo.processingTime}. The file will be optimized for performance.`, 
+          'info'
+        );
+      }
+
+      setIsLoading(true);
+      setShowLoadingProgress(true);
+      setLoadingFileName(file.name);
+      setLoadingProgress(0);
+      setLoadingMessage('Initializing...');
+      
+      try {
+        let newWorkbook: WorkbookData | null = null;
+        let newCells: { [key: string]: Cell } = {};
+        
+        if (DocumentConverter.isDocumentFile(file.name)) {
+          setLoadingMessage('Converting document...');
+          let conversion;
+          const extension = file.name.toLowerCase().split('.').pop();
+          
+          if (extension === 'pdf') {
+            conversion = await DocumentConverter.convertPdfToExcel(file);
+          } else if (extension === 'txt') {
+            conversion = await DocumentConverter.convertTextToExcel(file);
+          } else {
+            conversion = await DocumentConverter.convertWordToExcel(file);
+          }
+          
+          if (conversion.success) {
+            newWorkbook = conversion.convertedData;
+            newCells = newWorkbook.worksheets[0].cells;
+            setLoadingProgress(100);
+            addNotification(`Document converted successfully: ${conversion.conversionLog.length} steps completed`, 'success');
+          } else {
+            throw new Error('Document conversion failed');
+          }
+        } else if (ExcelFileHandler.isExcelFile(file.name)) {
+          setLoadingMessage('Reading Excel file...');
+          newWorkbook = await LargeFileHandler.readLargeExcelFile(file, (progress) => {
+            setLoadingProgress(progress);
+            if (progress < 30) {
+              setLoadingMessage('Reading file structure...');
+            } else if (progress < 70) {
+              setLoadingMessage('Processing worksheets...');
+            } else if (progress < 95) {
+              setLoadingMessage('Optimizing data...');
+            } else {
+              setLoadingMessage('Finalizing...');
+            }
+          });
+          
+          const activeSheet = newWorkbook.worksheets.find(ws => ws.isActive);
+          newCells = activeSheet?.cells || {};
+          
+          const totalCells = Object.keys(newCells).length;
+          const sheetsCount = newWorkbook.worksheets.length;
+          
+          addNotification(
+            `Excel workbook imported: ${sheetsCount} sheet${sheetsCount > 1 ? 's' : ''} loaded with ${totalCells.toLocaleString()} cells`, 
+            'success'
+          );
+          
+          if (totalCells > 50000) {
+            addNotification('Large dataset detected. Performance optimizations have been applied.', 'info');
+          }
+          
+        } else if (ExcelFileHandler.isCSVFile(file.name)) {
+          setLoadingMessage('Reading CSV file...');
+          newCells = await LargeFileHandler.readLargeCSVFile(file, (progress) => {
+            setLoadingProgress(progress);
+            if (progress < 30) {
+              setLoadingMessage('Parsing CSV data...');
+            } else if (progress < 80) {
+              setLoadingMessage('Processing rows...');
+            } else {
+              setLoadingMessage('Finalizing...');
+            }
+          });
+          
+          const cellEntries = Object.entries(newCells);
+          const maxRow = cellEntries.length > 0 ? Math.max(...cellEntries.map(([_, cell]) => cell.row)) : 0;
+          const maxCol = cellEntries.length > 0 ? Math.max(...cellEntries.map(([_, cell]) => cell.col)) : 0;
+          
+          newWorkbook = {
+            id: Date.now().toString(),
+            name: file.name.replace(/\.[^/.]+$/, ''),
+            worksheets: [{
+              name: 'Sheet1',
+              cells: newCells,
+              isActive: true,
+              rowCount: maxRow,
+              columnCount: maxCol
+            }],
+            activeWorksheet: 'Sheet1',
+            createdAt: new Date(),
+            lastModified: new Date()
+          };
+          
+          addNotification(`CSV imported successfully: ${maxRow.toLocaleString()} rows, ${maxCol} columns`, 'success');
+          
+          if (maxRow > 10000) {
+            addNotification('Large CSV file optimized for performance. Some rows may be sampled for display.', 'info');
+          }
+          
+        } else {
+          throw new Error('Unsupported file format');
+        }
+
+        setWorkbook(newWorkbook);
+        setSpreadsheetData(prev => ({ ...prev, cells: newCells }));
+        setIsDataLoaded(true);
+        setShowWelcomeScreen(false);
+        
+        setTimeout(() => {
+          setShowLoadingProgress(false);
+          setLoadingProgress(0);
+        }, 1000);
+        
+      } catch (error) {
+        console.error('Import error:', error);
+        setShowLoadingProgress(false);
+        setLoadingProgress(0);
+        addNotification(
+          `Failed to import file: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+          'error'
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    input.click();
+  }, [isAuthenticated]);
+
   // Check authentication status on app load
   useEffect(() => {
     // If authenticated, show welcome screen
@@ -236,14 +422,6 @@ function App() {
   // Register keyboard shortcuts
   const { getShortcutsHelp } = useKeyboardShortcuts(shortcuts, true);
 
-  const addNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    const id = Date.now();
-    setNotifications(prev => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    }, 5000);
-  };
-
   const dismissPrivacyBanner = () => {
     setShowPrivacyBanner(false);
     localStorage.setItem('privacyBannerDismissed', 'true');
@@ -280,32 +458,6 @@ function App() {
   const handleSubscriptionSuccess = () => {
     setIsSubscribed(true);
     addNotification('Subscription activated successfully!', 'success');
-  };
-
-  const checkFeatureAccess = (): boolean => {
-    if (!isAuthenticated) {
-      setShowAuthModal(true);
-      addNotification('Please log in to access this feature.', 'info');
-      return false;
-    }
-    return true;
-  };
-
-  const handleLogoClick = () => {
-    setWorkbook(null);
-    setSpreadsheetData({ cells: {}, selectedCell: undefined, selectedRange: [] });
-    setShowAnalyticsPanel(false);
-    setShowQueryResults(false);
-    setShowExportModal(false);
-    setShowPivotPanel(false);
-    setShowFormulaAssistant(false);
-    setQueryResult(null);
-    setIsDataLoaded(false);
-    setIsLoading(false);
-    setShowWelcomeScreen(true);
-    setNotifications([]);
-    
-    addNotification('Application reset - Ready for new data import', 'info');
   };
 
   const handleCellChange = useCallback((cellId: string, value: any, formula?: string) => {
@@ -517,158 +669,6 @@ function App() {
     setShowWelcomeScreen(false);
     
     addNotification(`New sheet "${name}" created successfully!`, 'success');
-  };
-
-  const handleImportFile = async () => {
-    if (!checkFeatureAccess()) return;
-    
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.csv,.xlsx,.xls,.xlsm,.xlsb,.ods,.pdf,.doc,.docx,.txt';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-
-      const canProcess = LargeFileHandler.canProcessFile(file);
-      if (!canProcess.canProcess) {
-        addNotification(canProcess.reason || 'Cannot process this file', 'error');
-        return;
-      }
-
-      if (file.size > 10 * 1024 * 1024) {
-        const fileInfo = LargeFileHandler.getFileInfo(file);
-        addNotification(
-          `Large file detected (${fileInfo.size}). Estimated processing time: ${fileInfo.processingTime}. The file will be optimized for performance.`, 
-          'info'
-        );
-      }
-
-      setIsLoading(true);
-      setShowLoadingProgress(true);
-      setLoadingFileName(file.name);
-      setLoadingProgress(0);
-      setLoadingMessage('Initializing...');
-      
-      try {
-        let newWorkbook: WorkbookData | null = null;
-        let newCells: { [key: string]: Cell } = {};
-        
-        if (DocumentConverter.isDocumentFile(file.name)) {
-          setLoadingMessage('Converting document...');
-          let conversion;
-          const extension = file.name.toLowerCase().split('.').pop();
-          
-          if (extension === 'pdf') {
-            conversion = await DocumentConverter.convertPdfToExcel(file);
-          } else if (extension === 'txt') {
-            conversion = await DocumentConverter.convertTextToExcel(file);
-          } else {
-            conversion = await DocumentConverter.convertWordToExcel(file);
-          }
-          
-          if (conversion.success) {
-            newWorkbook = conversion.convertedData;
-            newCells = newWorkbook.worksheets[0].cells;
-            setLoadingProgress(100);
-            addNotification(`Document converted successfully: ${conversion.conversionLog.length} steps completed`, 'success');
-          } else {
-            throw new Error('Document conversion failed');
-          }
-        } else if (ExcelFileHandler.isExcelFile(file.name)) {
-          setLoadingMessage('Reading Excel file...');
-          newWorkbook = await LargeFileHandler.readLargeExcelFile(file, (progress) => {
-            setLoadingProgress(progress);
-            if (progress < 30) {
-              setLoadingMessage('Reading file structure...');
-            } else if (progress < 70) {
-              setLoadingMessage('Processing worksheets...');
-            } else if (progress < 95) {
-              setLoadingMessage('Optimizing data...');
-            } else {
-              setLoadingMessage('Finalizing...');
-            }
-          });
-          
-          const activeSheet = newWorkbook.worksheets.find(ws => ws.isActive);
-          newCells = activeSheet?.cells || {};
-          
-          const totalCells = Object.keys(newCells).length;
-          const sheetsCount = newWorkbook.worksheets.length;
-          
-          addNotification(
-            `Excel workbook imported: ${sheetsCount} sheet${sheetsCount > 1 ? 's' : ''} loaded with ${totalCells.toLocaleString()} cells`, 
-            'success'
-          );
-          
-          if (totalCells > 50000) {
-            addNotification('Large dataset detected. Performance optimizations have been applied.', 'info');
-          }
-          
-        } else if (ExcelFileHandler.isCSVFile(file.name)) {
-          setLoadingMessage('Reading CSV file...');
-          newCells = await LargeFileHandler.readLargeCSVFile(file, (progress) => {
-            setLoadingProgress(progress);
-            if (progress < 30) {
-              setLoadingMessage('Parsing CSV data...');
-            } else if (progress < 80) {
-              setLoadingMessage('Processing rows...');
-            } else {
-              setLoadingMessage('Finalizing...');
-            }
-          });
-          
-          const cellEntries = Object.entries(newCells);
-          const maxRow = cellEntries.length > 0 ? Math.max(...cellEntries.map(([_, cell]) => cell.row)) : 0;
-          const maxCol = cellEntries.length > 0 ? Math.max(...cellEntries.map(([_, cell]) => cell.col)) : 0;
-          
-          newWorkbook = {
-            id: Date.now().toString(),
-            name: file.name.replace(/\.[^/.]+$/, ''),
-            worksheets: [{
-              name: 'Sheet1',
-              cells: newCells,
-              isActive: true,
-              rowCount: maxRow,
-              columnCount: maxCol
-            }],
-            activeWorksheet: 'Sheet1',
-            createdAt: new Date(),
-            lastModified: new Date()
-          };
-          
-          addNotification(`CSV imported successfully: ${maxRow.toLocaleString()} rows, ${maxCol} columns`, 'success');
-          
-          if (maxRow > 10000) {
-            addNotification('Large CSV file optimized for performance. Some rows may be sampled for display.', 'info');
-          }
-          
-        } else {
-          throw new Error('Unsupported file format');
-        }
-
-        setWorkbook(newWorkbook);
-        setSpreadsheetData(prev => ({ ...prev, cells: newCells }));
-        setIsDataLoaded(true);
-        setShowWelcomeScreen(false);
-        
-        setTimeout(() => {
-          setShowLoadingProgress(false);
-          setLoadingProgress(0);
-        }, 1000);
-        
-      } catch (error) {
-        console.error('Import error:', error);
-        setShowLoadingProgress(false);
-        setLoadingProgress(0);
-        addNotification(
-          `Failed to import file: ${error instanceof Error ? error.message : 'Unknown error'}`, 
-          'error'
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    input.click();
   };
 
   const handleWorksheetChange = (worksheetName: string) => {
