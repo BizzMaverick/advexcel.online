@@ -37,6 +37,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState('');
+  const [demoOTP, setDemoOTP] = useState('');
 
   // Calculate password strength
   useEffect(() => {
@@ -153,12 +154,51 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
           throw new Error(result.message || 'Registration failed');
         }
 
-        // Show OTP verification
-        setOtpSent(true);
-        setSuccess('Account created! Please check your email/phone for verification code.');
+        // Send OTP for verification
+        await sendOTP();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  const sendOTP = async () => {
+    setIsAuthLoading(true);
+    try {
+      const response = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          identifier: formData.identifier, 
+          type: identifierType 
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send verification code');
+      }
+
+      // For demo purposes, show the OTP
+      if (identifierType === 'email') {
+        const storedData = localStorage.getItem(`otp_${formData.identifier}`);
+        if (storedData) {
+          const { code } = JSON.parse(storedData);
+          setDemoOTP(code);
+        }
+      } else {
+        const sentOTP = await SMSService.getLastSentOTP(formData.identifier);
+        if (sentOTP) {
+          setDemoOTP(sentOTP);
+        }
+      }
+
+      setOtpSent(true);
+      setSuccess('Verification code sent! Please check your ' + 
+        (identifierType === 'email' ? 'email' : 'phone'));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to send verification code');
     } finally {
       setIsAuthLoading(false);
     }
@@ -295,6 +335,21 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
                 We've sent a verification code to your {identifierType === 'email' ? 'email' : 'phone'}
               </p>
             </div>
+
+            {/* Demo OTP display */}
+            {demoOTP && (
+              <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-4 mb-6">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-yellow-300">Demo Mode: Verification Code</h3>
+                    <p className="text-lg font-mono text-white mt-1 text-center">{demoOTP}</p>
+                    <p className="text-xs text-yellow-200 mt-1">
+                      In a production environment, this code would be sent to your {identifierType === 'email' ? 'email' : 'phone'}.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <form onSubmit={handleVerifyOTP} className="space-y-4">
               <div>
@@ -573,7 +628,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
                 )}
               </div>
 
-              {/* Confirm Password Input */}
+              {/* Confirm Password (Signup only) */}
               {authMode === 'signup' && (
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">
