@@ -33,24 +33,6 @@ export class EnvironmentService {
     };
   }
 
-  // SMS Configuration
-  static getTwilioConfig(): {
-    accountSid: string;
-    authToken: string;
-    phoneNumber: string;
-  } {
-    return {
-      accountSid: import.meta.env.VITE_TWILIO_ACCOUNT_SID || '',
-      authToken: import.meta.env.VITE_TWILIO_AUTH_TOKEN || '',
-      phoneNumber: import.meta.env.VITE_TWILIO_PHONE_NUMBER || ''
-    };
-  }
-
-  // Database Configuration
-  static getDbConnectionString(): string {
-    return import.meta.env.VITE_DB_CONNECTION_STRING || '';
-  }
-
   // Environment Detection
   static isDevelopment(): boolean {
     return import.meta.env.DEV === true;

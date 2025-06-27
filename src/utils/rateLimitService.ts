@@ -25,7 +25,7 @@ export class RateLimitService {
       maxRequests: 100,
       skipSuccessfulRequests: true
     },
-    mfa: {
+    otp: {
       windowMs: 5 * 60 * 1000, // 5 minutes
       maxRequests: 10,
       skipSuccessfulRequests: true
@@ -169,32 +169,6 @@ export class RateLimitService {
         }
       }
     }, 5 * 60 * 1000); // Clean up every 5 minutes
-  }
-
-  // Get current status for monitoring
-  static getStatus(): {
-    totalEntries: number;
-    blockedEntries: number;
-    activeWindows: number;
-  } {
-    const now = Date.now();
-    let blockedEntries = 0;
-    let activeWindows = 0;
-
-    for (const entry of this.limits.values()) {
-      if (entry.blocked && now < entry.resetTime) {
-        blockedEntries++;
-      }
-      if (now < entry.resetTime) {
-        activeWindows++;
-      }
-    }
-
-    return {
-      totalEntries: this.limits.size,
-      blockedEntries,
-      activeWindows
-    };
   }
 }
 

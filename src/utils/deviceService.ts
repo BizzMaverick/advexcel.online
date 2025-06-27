@@ -102,106 +102,12 @@ export class DeviceService {
     return { allowed: true, message: 'Device access granted' };
   }
 
-  static async addTrustedDevice(
-    userId: string, 
-    deviceName?: string
-  ): Promise<{ success: boolean; message: string }> {
-    try {
-      const deviceFingerprint = this.generateDeviceFingerprint();
-      const trustedDevices = await this.getTrustedDevices(userId);
-      
-      // Check if device is already trusted
-      if (trustedDevices.some(device => device.deviceFingerprint === deviceFingerprint)) {
-        return { success: true, message: 'Device already trusted' };
-      }
-      
-      // Check if max devices reached
-      if (trustedDevices.length >= this.MAX_TRUSTED_DEVICES) {
-        return { 
-          success: false, 
-          message: `Maximum of ${this.MAX_TRUSTED_DEVICES} trusted devices allowed. Please remove one first.` 
-        };
-      }
-      
-      // Add new trusted device
-      const newDevice: TrustedDevice = {
-        id: Date.now().toString(),
-        deviceFingerprint,
-        deviceName: deviceName || this.getDeviceName(),
-        lastUsed: new Date(),
-        ipAddress: '127.0.0.1',
-        userAgent: navigator.userAgent
-      };
-      
-      trustedDevices.push(newDevice);
-      localStorage.setItem(`trusted_devices_${userId}`, JSON.stringify(trustedDevices));
-      
-      // Log device trust
-      AuditService.log({
-        action: 'device_trusted',
-        resource: 'device',
-        details: { deviceId: deviceFingerprint, deviceName: newDevice.deviceName },
-        ipAddress: '127.0.0.1',
-        success: true
-      });
-      
-      return { success: true, message: 'Device added to trusted devices' };
-    } catch (error) {
-      console.error('Error adding trusted device:', error);
-      return { success: false, message: 'Failed to add trusted device' };
-    }
-  }
-
-  static async removeTrustedDevice(
-    userId: string, 
-    deviceId: string
-  ): Promise<{ success: boolean; message: string }> {
-    try {
-      const trustedDevices = await this.getTrustedDevices(userId);
-      const updatedDevices = trustedDevices.filter(device => device.id !== deviceId);
-      
-      localStorage.setItem(`trusted_devices_${userId}`, JSON.stringify(updatedDevices));
-      
-      // Log device removal
-      AuditService.log({
-        action: 'device_removed',
-        resource: 'device',
-        details: { deviceId },
-        ipAddress: '127.0.0.1',
-        success: true
-      });
-      
-      return { success: true, message: 'Device removed from trusted devices' };
-    } catch (error) {
-      console.error('Error removing trusted device:', error);
-      return { success: false, message: 'Failed to remove trusted device' };
-    }
-  }
-
   static async getTrustedDevices(userId: string): Promise<TrustedDevice[]> {
     try {
       const devices = localStorage.getItem(`trusted_devices_${userId}`);
       return devices ? JSON.parse(devices) : [];
     } catch {
       return [];
-    }
-  }
-
-  static async updateDeviceLastUsed(userId: string): Promise<void> {
-    try {
-      const deviceFingerprint = this.generateDeviceFingerprint();
-      const trustedDevices = await this.getTrustedDevices(userId);
-      
-      const updatedDevices = trustedDevices.map(device => {
-        if (device.deviceFingerprint === deviceFingerprint) {
-          return { ...device, lastUsed: new Date() };
-        }
-        return device;
-      });
-      
-      localStorage.setItem(`trusted_devices_${userId}`, JSON.stringify(updatedDevices));
-    } catch (error) {
-      console.error('Error updating device last used:', error);
     }
   }
 

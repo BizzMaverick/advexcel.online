@@ -1,3 +1,5 @@
+import { Cell } from './spreadsheet';
+
 export interface WorksheetData {
   name: string;
   cells: { [key: string]: Cell };
@@ -21,5 +23,3 @@ export interface DocumentConversion {
   conversionLog: string[];
   success: boolean;
 }
-
-import { Cell } from './spreadsheet';

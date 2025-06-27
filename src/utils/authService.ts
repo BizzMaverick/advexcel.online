@@ -9,7 +9,6 @@ import {
   SignupData, 
   UserRole, 
   Permission,
-  MFASetup,
   SecuritySettings,
   TrustedDevice
 } from '../types/auth';
@@ -139,12 +138,6 @@ export class AuthService {
           }
         }
 
-        // Check device trust
-        const isTrustedDevice = this.isDeviceTrusted(user, deviceFingerprint);
-        if (!isTrustedDevice && !credentials.rememberDevice) {
-          // Could implement additional verification here
-        }
-
         // Generate tokens
         const tokens = await JWTService.generateTokens(user);
         
@@ -155,7 +148,7 @@ export class AuthService {
         await this.updateLastLogin(user.id, ipAddress);
 
         // Add device to trusted list if requested
-        if (credentials.rememberDevice && !isTrustedDevice) {
+        if (credentials.rememberDevice) {
           await this.addTrustedDevice(user.id, deviceFingerprint, ipAddress);
         }
 
@@ -622,6 +615,28 @@ export class AuthService {
     }
   }
 
+  // MFA Methods
+  static async verifyMFA(userId: string, code: string): Promise<boolean> {
+    try {
+      const secret = await this.getMFASecret(userId);
+      if (!secret) return false;
+
+      return CryptoService.verifyTOTP(code, secret);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  private static async getMFASecret(userId: string): Promise<string | null> {
+    try {
+      const encryptedSecret = localStorage.getItem(`mfa_${userId}`);
+      if (!encryptedSecret) return null;
+      return await CryptoService.decrypt(encryptedSecret);
+    } catch {
+      return null;
+    }
+  }
+
   // Private Helper Methods
   private static async validateCredentials(identifier: string, password: string): Promise<User | null> {
     // In production, this would query your database
@@ -807,28 +822,6 @@ export class AuthService {
     localStorage.removeItem(this.TOKEN_STORAGE_KEY);
     localStorage.removeItem(this.USER_STORAGE_KEY);
     localStorage.removeItem(this.SESSION_STORAGE_KEY);
-  }
-
-  // MFA Methods
-  private static async verifyMFA(userId: string, code: string): Promise<boolean> {
-    try {
-      const secret = await this.getMFASecret(userId);
-      if (!secret) return false;
-
-      return CryptoService.verifyTOTP(code, secret);
-    } catch (error) {
-      return false;
-    }
-  }
-
-  private static async getMFASecret(userId: string): Promise<string | null> {
-    try {
-      const encryptedSecret = localStorage.getItem(`mfa_${userId}`);
-      if (!encryptedSecret) return null;
-      return await CryptoService.decrypt(encryptedSecret);
-    } catch {
-      return null;
-    }
   }
 
   // Public methods for admin functionality

@@ -70,14 +70,6 @@ export const useAuth = () => {
     try {
       setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
 
-      // Security check
-      const ipAddress = await getClientIP();
-      const securityCheck = await SecurityService.detectSuspiciousActivity('login_attempt', ipAddress);
-      
-      if (securityCheck.suspicious) {
-        throw new Error(`Login blocked: ${securityCheck.reason}`);
-      }
-
       const result = await AuthService.login(credentials);
       
       if (result.success && result.user && result.tokens) {
@@ -88,14 +80,6 @@ export const useAuth = () => {
           isLoading: false,
           error: null,
           sessionId: extractSessionId(result.tokens.accessToken)
-        });
-
-        await AuditService.log({
-          action: 'user_login_success',
-          resource: 'auth',
-          details: { userId: result.user.id },
-          ipAddress,
-          success: true
         });
 
         return { success: true, user: result.user };
@@ -247,11 +231,6 @@ export const useAuth = () => {
     } catch {
       return null;
     }
-  };
-
-  const getClientIP = async (): Promise<string> => {
-    // In production, this would be handled by your backend
-    return '127.0.0.1';
   };
 
   return {

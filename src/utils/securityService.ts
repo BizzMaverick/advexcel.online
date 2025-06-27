@@ -67,12 +67,6 @@ export class SecurityService {
       return attackAnalysis;
     }
 
-    // Geolocation analysis (simplified)
-    const geoAnalysis = await this.analyzeGeolocation(ipAddress, userId);
-    if (geoAnalysis.suspicious) {
-      return geoAnalysis;
-    }
-
     return { suspicious: false };
   }
 
@@ -151,12 +145,12 @@ export class SecurityService {
   private static getCSPHeader(): string {
     return [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://js.stripe.com",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: https: blob:",
       "font-src 'self' data: https://fonts.gstatic.com",
       "connect-src 'self' https: wss:",
-      "frame-src https://checkout.razorpay.com https://js.stripe.com",
+      "frame-src 'self'",
       "object-src 'none'",
       "base-uri 'self'"
     ].join('; ');
@@ -253,45 +247,6 @@ export class SecurityService {
         reason: 'Potential injection attack detected',
         severity: 'high'
       };
-    }
-
-    return { suspicious: false };
-  }
-
-  private static async analyzeGeolocation(
-    ipAddress: string,
-    userId?: string
-  ): Promise<{ suspicious: boolean; reason?: string; severity?: 'low' | 'medium' | 'high' }> {
-    
-    // In production, use a geolocation service
-    // For now, just check for private/local IPs
-    const privateIPPatterns = [
-      /^10\./,
-      /^172\.(1[6-9]|2\d|3[01])\./,
-      /^192\.168\./,
-      /^127\./,
-      /^localhost$/
-    ];
-
-    const isPrivateIP = privateIPPatterns.some(pattern => pattern.test(ipAddress));
-    
-    if (!isPrivateIP && userId) {
-      // Check if this is a new location for the user
-      const userLogs = AuditService.getLogs({
-        userId,
-        startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
-        limit: 100
-      });
-
-      const knownIPs = new Set(userLogs.map(log => log.ipAddress));
-      
-      if (!knownIPs.has(ipAddress)) {
-        return {
-          suspicious: true,
-          reason: 'Login from new location',
-          severity: 'medium'
-        };
-      }
     }
 
     return { suspicious: false };

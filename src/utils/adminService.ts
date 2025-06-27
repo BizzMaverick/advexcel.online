@@ -17,28 +17,7 @@ export class AdminService {
     try {
       // In a real application, this would be an API call
       // For demo purposes, we'll get users from localStorage
-      const users: User[] = [];
-      
-      // Get all keys from localStorage
-      const keys = Object.keys(localStorage);
-      
-      // Filter user data keys
-      const userKeys = keys.filter(key => key.startsWith('user_'));
-      
-      // Extract user data
-      for (const key of userKeys) {
-        try {
-          const userData = localStorage.getItem(key);
-          if (userData) {
-            const { user } = JSON.parse(userData);
-            users.push(user);
-          }
-        } catch (error) {
-          console.error(`Error parsing user data for key ${key}:`, error);
-        }
-      }
-      
-      return users;
+      return await AuthService.getAllUsers();
     } catch (error) {
       console.error('Error getting all users:', error);
       throw new Error('Failed to retrieve users');
@@ -220,76 +199,6 @@ export class AdminService {
       return {
         success: false,
         message: 'Failed to delete user'
-      };
-    }
-  }
-  
-  /**
-   * Reset a user's password
-   */
-  static async resetUserPassword(userId: string, newPassword: string): Promise<AdminServiceResult> {
-    try {
-      // Find the user
-      const user = await AuthService.findUserById(userId);
-      if (!user) {
-        return {
-          success: false,
-          message: 'User not found'
-        };
-      }
-      
-      // Validate password
-      if (newPassword.length < 8) {
-        return {
-          success: false,
-          message: 'Password must be at least 8 characters'
-        };
-      }
-      
-      // Hash new password
-      const hashedPassword = await CryptoService.hashPassword(newPassword);
-      
-      // Update user's password
-      const identifier = user.email || user.phoneNumber;
-      if (!identifier) {
-        return {
-          success: false,
-          message: 'User has no identifier'
-        };
-      }
-      
-      // Update user security info
-      const updatedUser: User = {
-        ...user,
-        security: {
-          ...user.security,
-          lastPasswordChange: new Date(),
-          failedLoginAttempts: 0,
-          lockedUntil: undefined
-        }
-      };
-      
-      // Store updated user with new password
-      await AuthService.storeUser(updatedUser, hashedPassword);
-      
-      // Log the action
-      await AuditService.log({
-        action: 'password_reset_by_admin',
-        resource: 'user',
-        details: { userId, email: user.email, phoneNumber: user.phoneNumber },
-        ipAddress: '127.0.0.1',
-        success: true
-      });
-      
-      return {
-        success: true,
-        message: 'Password reset successfully'
-      };
-    } catch (error) {
-      console.error('Error resetting password:', error);
-      return {
-        success: false,
-        message: 'Failed to reset password'
       };
     }
   }

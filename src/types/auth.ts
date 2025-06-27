@@ -104,12 +104,6 @@ export interface SignupData {
   acceptTerms: boolean;
 }
 
-export interface MFASetup {
-  secret: string;
-  qrCode: string;
-  backupCodes: string[];
-}
-
 export interface AuditLog {
   id: string;
   userId: string;
