@@ -1,13 +1,12 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { FileSpreadsheet, Upload, RotateCcw, MessageCircle, Star, LogOut, Shield, X, Crown, Gift, Users, Calculator, Search, Keyboard } from 'lucide-react';
+import { RotateCcw, MessageCircle, LogOut, Shield, X, Crown, Users, Search, Keyboard } from 'lucide-react';
 import Papa from 'papaparse';
 import { SpreadsheetGrid } from './components/SpreadsheetGrid';
 import { CommandBar } from './components/CommandBar';
 import { StatusBar } from './components/StatusBar';
 import { AnalyticsPanel } from './components/AnalyticsPanel';
 import { QueryResultsPanel } from './components/QueryResultsPanel';
-import { WelcomeScreen } from './components/WelcomeScreen';
 import { ExportModal, ExportOptions } from './components/ExportModal';
 import { PivotTablePanel } from './components/PivotTablePanel';
 import { Sidebar } from './components/Sidebar';
