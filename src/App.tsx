@@ -39,11 +39,9 @@ import { NaturalLanguageProcessor, QueryResult } from './utils/naturalLanguagePr
 import { DocumentConverter } from './utils/documentConverter';
 import { MultiSheetHandler } from './utils/multiSheetHandler';
 import { useAuthContext } from './context/AuthContext';
-import { AuthGuard } from './components/AuthGuard';
-import { EnvironmentService } from './utils/environmentService';
-import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminRoute from './components/AdminRoute';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 function App() {
   // Authentication state from context
