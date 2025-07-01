@@ -1,4 +1,4 @@
-import { Mail, GitHub, Heart } from 'lucide-react';
+import { Mail, Github as GitHub, Heart } from 'lucide-react';
 
 const Footer = () => {
   return (
