@@ -2,55 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom animations for privacy banner */
-@keyframes marquee {
-  0% {
-    transform: translateX(100%);
-  }
-  100% {
-    transform: translateX(-100%);
-  }
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+  
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.animate-marquee {
-  animation: marquee 20s linear infinite;
-}
-
-/* Pause animation on hover */
-.animate-marquee:hover {
-  animation-play-state: paused;
-}
-
-/* Admin dashboard styles */
-.admin-layout {
-  display: grid;
-  grid-template-columns: 240px 1fr;
+body {
+  margin: 0;
+  min-width: 320px;
   min-height: 100vh;
 }
 
-.admin-sidebar {
-  position: fixed;
-  width: 240px;
-  height: 100vh;
-  overflow-y: auto;
-}
-
-.admin-content {
-  margin-left: 240px;
-  width: calc(100% - 240px);
-}
-
-@media (max-width: 768px) {
-  .admin-layout {
-    grid-template-columns: 1fr;
-  }
-  
-  .admin-sidebar {
-    display: none;
-  }
-  
-  .admin-content {
-    margin-left: 0;
-    width: 100%;
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
   }
 }
