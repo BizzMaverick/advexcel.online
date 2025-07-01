@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { FileSpreadsheet, Upload, Download, BarChart3, Table, Settings, Info } from 'lucide-react';
+import { FileSpreadsheet, Upload } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
@@ -17,7 +17,7 @@ function App() {
   const [spreadsheetData, setSpreadsheetData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   
-  const { isAuthenticated, user, logout } = useAuthContext();
+  const { isAuthenticated, logout } = useAuthContext();
 
   const handleImportFile = (data: any) => {
     setSpreadsheetData(data);
@@ -42,7 +42,6 @@ function App() {
           onExportClick={() => setShowExportModal(true)}
           onAuthClick={() => setShowAuthModal(true)}
           isAuthenticated={isAuthenticated}
-          user={user}
           onLogout={logout}
         />
         
