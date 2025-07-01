@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, Send, X, Bot, User, Star, ThumbsUp, ThumbsDown, AlertCircle, Lightbulb, HelpCircle, Mail } from 'lucide-react';
+import { Send, X, Bot, User, AlertCircle, Lightbulb, HelpCircle, Mail } from 'lucide-react';
 import { ChatMessage, SuggestionFeedback } from '../types/chat';
 
 interface ChatBotProps {

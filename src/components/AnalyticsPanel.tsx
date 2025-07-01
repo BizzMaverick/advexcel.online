@@ -119,7 +119,7 @@ export const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ data, isVisible,
                 nameKey={xAxis}
                 label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
               >
-                {chartData.map((entry, index) => (
+                {chartData.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={colors?.[index % (colors?.length || 1)] || `hsl(${index * 45 % 360}, 70%, 60%)`} />
                 ))}
               </Pie>
