@@ -7,7 +7,7 @@ import Sidebar from './components/Sidebar';
 import Footer from './components/Footer';
 import ImportModal from './components/ImportModal';
 import ExportModal from './components/ExportModal';
-import AuthModal from './components/AuthModal';
+import { AuthModal } from './components/AuthModal';
 import { useAuth } from './context/AuthContext';
 
 function App() {
@@ -27,6 +27,11 @@ function App() {
   const handleExportFile = () => {
     // Export logic will be implemented here
     setShowExportModal(false);
+  };
+
+  const handleAuthSuccess = (user: any) => {
+    // Handle successful authentication
+    setShowAuthModal(false);
   };
 
   return (
@@ -70,8 +75,9 @@ function App() {
         )}
         
         <AuthModal 
-          isOpen={showAuthModal} 
-          onClose={() => setShowAuthModal(false)} 
+          isVisible={showAuthModal} 
+          onClose={() => setShowAuthModal(false)}
+          onAuthSuccess={handleAuthSuccess}
         />
       </div>
     </Router>

@@ -1,4 +1,4 @@
-import * as CryptoJS from 'crypto-js';
+import CryptoJS from 'crypto-js';
 
 export class CryptoService {
   private static readonly SALT_ROUNDS = 12;
