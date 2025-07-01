@@ -8,7 +8,7 @@ import Footer from './components/Footer';
 import ImportModal from './components/ImportModal';
 import ExportModal from './components/ExportModal';
 import { AuthModal } from './components/AuthModal';
-import { useAuth } from './context/AuthContext';
+import { useAuthContext } from './context/AuthContext';
 
 function App() {
   const [showImportModal, setShowImportModal] = useState(false);
@@ -17,7 +17,7 @@ function App() {
   const [spreadsheetData, setSpreadsheetData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout } = useAuthContext();
 
   const handleImportFile = (data: any) => {
     setSpreadsheetData(data);
