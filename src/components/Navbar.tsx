@@ -1,11 +1,22 @@
-import { FileSpreadsheet, Upload, Download, Settings, User } from 'lucide-react';
+import { FileSpreadsheet, Upload, Download, Settings, User, LogOut } from 'lucide-react';
 
 interface NavbarProps {
   onImportClick: () => void;
   onExportClick: () => void;
+  onAuthClick: () => void;
+  isAuthenticated: boolean;
+  user: any;
+  onLogout: () => void;
 }
 
-const Navbar = ({ onImportClick, onExportClick }: NavbarProps) => {
+const Navbar = ({ 
+  onImportClick, 
+  onExportClick, 
+  onAuthClick,
+  isAuthenticated,
+  user,
+  onLogout
+}: NavbarProps) => {
   return (
     <header className="bg-white shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -42,12 +53,32 @@ const Navbar = ({ onImportClick, onExportClick }: NavbarProps) => {
               <Download className="h-4 w-4 mr-2" />
               Export
             </button>
-            <button className="p-2 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-              <Settings className="h-6 w-6" />
-            </button>
-            <button className="ml-3 p-2 rounded-full bg-gray-100 text-gray-600 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-              <User className="h-6 w-6" />
-            </button>
+            
+            {isAuthenticated ? (
+              <div className="flex items-center ml-3">
+                <div className="relative">
+                  <div className="flex items-center space-x-3">
+                    <div className="text-sm font-medium text-gray-700">
+                      {user?.email}
+                    </div>
+                    <button
+                      onClick={onLogout}
+                      className="p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      <LogOut className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={onAuthClick}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              >
+                <User className="h-4 w-4 mr-2" />
+                Sign In
+              </button>
+            )}
           </div>
         </div>
       </div>

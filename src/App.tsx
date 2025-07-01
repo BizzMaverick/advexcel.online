@@ -7,12 +7,17 @@ import Sidebar from './components/Sidebar';
 import Footer from './components/Footer';
 import ImportModal from './components/ImportModal';
 import ExportModal from './components/ExportModal';
+import AuthModal from './components/AuthModal';
+import { useAuth } from './context/AuthContext';
 
 function App() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [spreadsheetData, setSpreadsheetData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  
+  const { isAuthenticated, user, logout } = useAuth();
 
   const handleImportFile = (data: any) => {
     setSpreadsheetData(data);
@@ -27,7 +32,14 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen flex flex-col bg-gray-50">
-        <Navbar onImportClick={() => setShowImportModal(true)} onExportClick={() => setShowExportModal(true)} />
+        <Navbar 
+          onImportClick={() => setShowImportModal(true)} 
+          onExportClick={() => setShowExportModal(true)}
+          onAuthClick={() => setShowAuthModal(true)}
+          isAuthenticated={isAuthenticated}
+          user={user}
+          onLogout={logout}
+        />
         
         <div className="flex flex-1">
           <Sidebar />
@@ -56,6 +68,11 @@ function App() {
             hasData={!!spreadsheetData}
           />
         )}
+        
+        <AuthModal 
+          isOpen={showAuthModal} 
+          onClose={() => setShowAuthModal(false)} 
+        />
       </div>
     </Router>
   );
