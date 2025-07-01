@@ -5,9 +5,9 @@ import { isValidPhoneNumber } from 'libphonenumber-js';
 import { useAuth } from '../hooks/useAuth';
 import { SignupData, LoginCredentials } from '../types/auth';
 import { ReferralService } from '../utils/referralService';
-import { DeviceService } from '../utils/deviceService';
 import { SecurityService } from '../utils/securityService';
 import { AuthService } from '../utils/authService';
+import { CryptoService } from '../utils/cryptoService';
 import 'react-phone-number-input/style.css';
 
 interface AuthModalProps {
@@ -53,7 +53,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [showReferralInput, setShowReferralInput] = useState(false);
   const [csrfToken, setCsrfToken] = useState('');
   const [passwordStrength, setPasswordStrength] = useState(0);
-  const [verificationInProgress, setVerificationInProgress] = useState(false);
 
   useEffect(() => {
     // Generate CSRF token
@@ -153,7 +152,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       if (result.success) {
         setSuccess(result.message);
         startOtpTimer();
-        setVerificationInProgress(true);
         
         // For demo purposes, retrieve the OTP that was generated
         if (result.demo?.otp) {
@@ -309,7 +307,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         }
 
         setSuccess('Verification successful!');
-        setVerificationInProgress(false);
 
         // OTP verified, proceed with login
         const credentials: LoginCredentials = {
@@ -322,8 +319,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         
         if (loginResult.success && loginResult.user) {
           // Apply referral code if provided
-          if (formData.referralCode) {
-            ReferralService.applyReferralCode(formData.referralCode, loginResult.user.id);
+          if (formData.referralCode && ReferralService.applyReferral) {
+            ReferralService.applyReferral(formData.referralCode, loginResult.user.id);
           }
           
           onAuthSuccess(loginResult.user);
@@ -372,10 +369,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         // In a real app, reset password with backend
         // For demo, we'll simulate password reset
-        const user = await AuthService['findUserByIdentifier'](formData.identifier);
+        const user = await AuthService.findUserByIdentifier(formData.identifier);
         if (user) {
           const hashedPassword = await CryptoService.hashPassword(formData.password);
-          await AuthService['storeUser'](user, hashedPassword);
+          await AuthService.storeUser(user, hashedPassword);
           
           setSuccess('Password reset successfully!');
           setTimeout(() => {
@@ -412,7 +409,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setOtpTimer(0);
     setDemoOTP('');
     setShowReferralInput(false);
-    setVerificationInProgress(false);
   };
 
   const switchMode = (newMode: AuthMode) => {
