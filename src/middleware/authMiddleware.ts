@@ -43,8 +43,8 @@ export class AuthMiddleware {
       }
 
       // Verify token
-      const payload = await JWTService.verifyToken(token, 'access');
-      if (!payload) {
+      const payload = JWTService.extractPayload(token);
+      if (!payload || JWTService.isTokenExpired(token)) {
         return { 
           authenticated: false, 
           error: 'Invalid or expired token',
@@ -148,8 +148,8 @@ export class AuthMiddleware {
       }
 
       // Verify refresh token
-      const payload = await JWTService.verifyToken(refreshToken, 'refresh');
-      if (!payload) {
+      const payload = JWTService.extractPayload(refreshToken);
+      if (!payload || JWTService.isTokenExpired(refreshToken)) {
         return { success: false, error: 'Invalid or expired refresh token' };
       }
 

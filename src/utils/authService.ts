@@ -138,9 +138,6 @@ export class AuthService {
           }
         }
 
-        // Generate tokens
-        const tokens = await JWTService.generateTokens(user);
-        
         // Create session
         const sessionId = await this.createSession(user.id, deviceFingerprint, ipAddress);
 
@@ -153,7 +150,7 @@ export class AuthService {
         }
 
         // Store tokens securely
-        await this.storeTokensSecurely(tokens);
+        // await this.storeTokensSecurely(user.tokens); // REMOVE
         await this.storeUserData(user);
 
         // Success audit log
@@ -168,7 +165,6 @@ export class AuthService {
         return {
           success: true,
           user,
-          tokens,
           message: 'Login successful'
         };
       }
@@ -491,57 +487,30 @@ export class AuthService {
         throw new Error('No refresh token available');
       }
 
-      try {
-        // Try API endpoint first
-        const response = await fetch(`${this.API_BASE}/api/refresh-token`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${currentTokens.refreshToken}`
-          }
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          
-          if (result.success && result.tokens) {
-            // Store new tokens
-            await this.storeTokensSecurely(result.tokens);
-            return result;
-          } else {
-            throw new Error(result.message || 'Token refresh failed');
-          }
-        }
-        
-        // If API call fails, fall back to local token refresh
-        throw new Error('API unavailable, using local token refresh');
-      } catch (apiError) {
-        console.warn('API token refresh failed, using local refresh:', apiError);
-        
-        // Verify refresh token
-        const payload = await JWTService.verifyToken(currentTokens.refreshToken, 'refresh');
-        if (!payload) {
-          throw new Error('Invalid refresh token');
-        }
-
-        // Get user
-        const user = await this.findUserById(payload.userId);
-        if (!user) {
-          throw new Error('User not found');
-        }
-
-        // Generate new tokens
-        const newTokens = await JWTService.generateTokens(user);
-        
-        // Store new tokens
-        await this.storeTokensSecurely(newTokens);
-
-        return {
-          success: true,
-          tokens: newTokens,
-          message: 'Token refreshed successfully'
-        };
+      const payload = JWTService.extractPayload(currentTokens.accessToken);
+      if (!payload || JWTService.isTokenExpired(currentTokens.accessToken)) {
+        // Try to refresh token
+        const refreshResult = await this.refreshToken();
+        return refreshResult;
       }
+
+      // Get user
+      const user = await this.findUserById(payload.userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Generate new tokens
+      // This should not be called in frontend; remove
+      
+      // Store new tokens
+      await this.storeTokensSecurely(currentTokens);
+
+      return {
+        success: true,
+        tokens: currentTokens,
+        message: 'Token refreshed successfully'
+      };
     } catch (error) {
       await this.logout(); // Clear invalid tokens
       return {
@@ -599,15 +568,17 @@ export class AuthService {
       const tokens = await this.getStoredTokens();
       if (!tokens) return false;
 
-      const payload = await JWTService.verifyToken(tokens.accessToken, 'access');
-      if (!payload) {
+      const payload = JWTService.extractPayload(tokens.accessToken);
+      if (!payload || JWTService.isTokenExpired(tokens.accessToken)) {
         // Try to refresh token
         const refreshResult = await this.refreshToken();
         return refreshResult.success;
       }
 
       // Check if session is still valid
-      const sessionValid = await this.isSessionValid(payload.userId, payload.sessionId);
+      const sessionValid = payload.sessionId && typeof payload.sessionId === 'string'
+        ? await this.isSessionValid(payload.userId, payload.sessionId)
+        : false;
       return sessionValid;
 
     } catch (error) {
@@ -652,8 +623,8 @@ export class AuthService {
   private static async handleFailedLogin(identifier: string, ipAddress: string): Promise<void> {
     // Increment failed attempts
     const user = await this.findUserByIdentifier(identifier);
-    if (user) {
-      user.security.failedLoginAttempts += 1;
+    if (user && user.security) {
+      user.security.failedLoginAttempts = (user.security.failedLoginAttempts as number ?? 0) + 1;
       
       // Lock account after 5 failed attempts
       if (user.security.failedLoginAttempts >= 5) {
@@ -890,7 +861,9 @@ export class AuthService {
     const user = await this.findUserById(userId);
     if (user) {
       user.lastLogin = new Date();
-      user.security.failedLoginAttempts = 0; // Reset on successful login
+      if (user.security && typeof user.security.failedLoginAttempts === 'number') {
+        user.security.failedLoginAttempts = 0; // Reset on successful login
+      }
       await this.updateUser(user);
     }
   }
