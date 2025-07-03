@@ -1,6 +1,7 @@
 import { User, AuthTokens } from '../types/auth';
 import { CryptoService } from './cryptoService';
 import { EnvironmentService } from './environmentService';
+import jwt from 'jsonwebtoken';
 
 interface JWTPayload {
   userId: string;
@@ -50,8 +51,8 @@ export class JWTService {
       type: 'refresh'
     };
 
-    const accessToken = await this.signToken(accessPayload);
-    const refreshToken = await this.signToken(refreshPayload);
+    const accessToken = jwt.sign(accessPayload, this.JWT_SECRET);
+    const refreshToken = jwt.sign(refreshPayload, this.JWT_SECRET);
 
     return {
       accessToken,
@@ -63,7 +64,7 @@ export class JWTService {
 
   static async verifyToken(token: string, expectedType: 'access' | 'refresh'): Promise<JWTPayload | null> {
     try {
-      const payload = await this.verifyTokenSignature(token);
+      const payload = jwt.verify(token, this.JWT_SECRET) as JWTPayload;
       
       if (!payload || payload.type !== expectedType) {
         return null;
@@ -91,111 +92,65 @@ export class JWTService {
   }
 
   static async refreshAccessToken(refreshToken: string): Promise<AuthTokens | null> {
-    const payload = await this.verifyToken(refreshToken, 'refresh');
-    if (!payload) return null;
+    try {
+      const payload = jwt.verify(refreshToken, this.JWT_SECRET) as JWTPayload;
+      if (!payload || payload.type !== 'refresh') return null;
 
-    // Create new access token with same session
-    const now = Math.floor(Date.now() / 1000);
-    const newAccessPayload: JWTPayload = {
-      ...payload,
-      iat: now,
-      exp: now + this.ACCESS_TOKEN_EXPIRY,
-      type: 'access'
-    };
+      // Create new access token with same session
+      const now = Math.floor(Date.now() / 1000);
+      const newAccessPayload: JWTPayload = {
+        ...payload,
+        iat: now,
+        exp: now + this.ACCESS_TOKEN_EXPIRY,
+        type: 'access'
+      };
 
-    const accessToken = await this.signToken(newAccessPayload);
+      const accessToken = jwt.sign(newAccessPayload, this.JWT_SECRET);
 
-    return {
-      accessToken,
-      refreshToken, // Keep the same refresh token
-      expiresAt: new Date((now + this.ACCESS_TOKEN_EXPIRY) * 1000),
-      tokenType: 'Bearer'
-    };
+      return {
+        accessToken,
+        refreshToken, // Keep the same refresh token
+        expiresAt: new Date((now + this.ACCESS_TOKEN_EXPIRY) * 1000),
+        tokenType: 'Bearer'
+      };
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      return null;
+    }
   }
 
   static extractPayload(token: string): JWTPayload | null {
     try {
-      const parts = token.split('.');
-      if (parts.length !== 3) return null;
-
-      const payload = JSON.parse(atob(parts[1]));
-      return payload;
+      return jwt.decode(token) as JWTPayload;
     } catch {
       return null;
     }
   }
 
   static isTokenExpired(token: string): boolean {
-    const payload = this.extractPayload(token);
-    if (!payload) return true;
+    try {
+      const decoded = jwt.decode(token) as JWTPayload;
+      if (!decoded) return true;
 
-    const now = Math.floor(Date.now() / 1000);
-    return payload.exp < now;
+      const now = Math.floor(Date.now() / 1000);
+      return decoded.exp < now;
+    } catch {
+      return true;
+    }
   }
 
   static getTokenExpirationTime(token: string): Date | null {
-    const payload = this.extractPayload(token);
-    if (!payload) return null;
-
-    return new Date(payload.exp * 1000);
-  }
-
-  // Private methods
-  private static async signToken(payload: JWTPayload): Promise<string> {
-    // In a production environment, use a proper JWT library like jose
-    // This is a simplified implementation for demo purposes
-    
-    const header = {
-      alg: 'HS256',
-      typ: 'JWT'
-    };
-
-    const encodedHeader = btoa(JSON.stringify(header));
-    const encodedPayload = btoa(JSON.stringify(payload));
-    
-    const signature = await this.createSignature(`${encodedHeader}.${encodedPayload}`);
-    
-    return `${encodedHeader}.${encodedPayload}.${signature}`;
-  }
-
-  private static async verifyTokenSignature(token: string): Promise<JWTPayload | null> {
     try {
-      const parts = token.split('.');
-      if (parts.length !== 3) return null;
+      const decoded = jwt.decode(token) as JWTPayload;
+      if (!decoded) return null;
 
-      const [header, payload, signature] = parts;
-      
-      // Verify signature
-      const expectedSignature = await this.createSignature(`${header}.${payload}`);
-      if (signature !== expectedSignature) {
-        return null;
-      }
-
-      return JSON.parse(atob(payload));
+      return new Date(decoded.exp * 1000);
     } catch {
       return null;
     }
   }
 
-  private static async createSignature(data: string): Promise<string> {
-    // In production, use proper HMAC-SHA256
-    // This is a simplified implementation
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(this.JWT_SECRET);
-    const messageData = encoder.encode(data);
-    
-    const key = await crypto.subtle.importKey(
-      'raw',
-      keyData,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
-    
-    const signature = await crypto.subtle.sign('HMAC', key, messageData);
-    return btoa(String.fromCharCode(...new Uint8Array(signature)));
-  }
-
+  // Private methods
   private static generateDeviceFingerprint(): string {
     // Generate a consistent device fingerprint
     const canvas = document.createElement('canvas');
