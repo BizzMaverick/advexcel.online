@@ -15,6 +15,7 @@
     "libphonenumber-js": "^1.10.51",
     "lucide-react": "^0.344.0",
     "papaparse": "^5.4.1",
+    "bcrypt": "5.1.0", // or latest version
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-phone-number-input": "^3.3.7",
