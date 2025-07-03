@@ -1,6 +1,8 @@
-const { AuthService } = require('../utils/authService');
-const { AuditService } = require('../utils/auditService');
-const { SecurityService } = require('../utils/securityService');
+const { AuthService } = require('./authService');
+const { AuditService } = require('./auditService');
+const { SecurityService } = require('./securityService');
+const { JWTService } = require('./jwtService');
+const { AdminService } = require('./adminService');
 
 // Middleware to verify admin access
 const verifyAdminAccess = async (event) => {
