@@ -1,4 +1,4 @@
-// If you see a 'Cannot find module \"jwt-decode\"' error, run: npm install jwt-decode
+// If you see a 'Cannot find module "jwt-decode"' error, run: npm install jwt-decode
 // If you see a 'Cannot find module ../types/auth' error, ensure types/auth.ts exists and is correct.
 import { jwtDecode } from 'jwt-decode';
 import { AuthTokens } from '../types/auth';
