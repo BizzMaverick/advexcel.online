@@ -40,8 +40,18 @@ export const useAuth = () => {
       if (isValid) {
         const user = await getStoredUser();
         const tokens = await getStoredTokens();
-        
-        if (user && tokens) {
+        let trialExpired = false;
+        let trialExpiresAt = null;
+        if (user && user.trialExpiresAt) {
+          trialExpiresAt = new Date(user.trialExpiresAt);
+        } else {
+          const trialExpiresAtStr = localStorage.getItem('trialExpiresAt');
+          if (trialExpiresAtStr) trialExpiresAt = new Date(trialExpiresAtStr);
+        }
+        if (trialExpiresAt && trialExpiresAt < new Date()) {
+          trialExpired = true;
+        }
+        if (user && tokens && !trialExpired) {
           setAuthState({
             user,
             tokens,
@@ -233,6 +243,21 @@ export const useAuth = () => {
     }
   };
 
+  // Helper: get days remaining in trial
+  const getTrialDaysRemaining = (): number | null => {
+    let trialExpiresAt = null;
+    if (authState.user && authState.user.trialExpiresAt) {
+      trialExpiresAt = new Date(authState.user.trialExpiresAt);
+    } else {
+      const trialExpiresAtStr = localStorage.getItem('trialExpiresAt');
+      if (trialExpiresAtStr) trialExpiresAt = new Date(trialExpiresAtStr);
+    }
+    if (!trialExpiresAt) return null;
+    const now = new Date();
+    const diff = trialExpiresAt.getTime() - now.getTime();
+    return diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
+  };
+
   return {
     // State
     user: authState.user,
@@ -249,6 +274,7 @@ export const useAuth = () => {
     refreshTokens,
     updateUser,
     clearError,
+    getTrialDaysRemaining,
 
     // Utilities
     hasPermission: (permission: string) => 

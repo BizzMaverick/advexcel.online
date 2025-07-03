@@ -9,6 +9,7 @@ export interface User {
   permissions: Permission[];
   profile: UserProfile;
   security: SecuritySettings;
+  trialExpiresAt?: string;
 }
 
 export interface UserProfile {

@@ -48,6 +48,24 @@ exports.handler = async function(event, context) {
         };
       }
       
+      // Require verification
+      if (!user.isVerified) {
+        return {
+          statusCode: 403,
+          headers,
+          body: JSON.stringify({ success: false, message: 'Account not verified. Please verify your email or phone.' })
+        };
+      }
+      
+      // Check if trial is expired
+      if (user.trialExpiresAt && new Date(user.trialExpiresAt) < new Date()) {
+        return {
+          statusCode: 403,
+          headers,
+          body: JSON.stringify({ success: false, message: 'Your free trial has expired.' })
+        };
+      }
+      
       // Check password
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
@@ -81,7 +99,8 @@ exports.handler = async function(event, context) {
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
-            role: user.role
+            role: user.role,
+            trialExpiresAt: user.trialExpiresAt
           },
           tokens: {
             accessToken,
@@ -126,7 +145,9 @@ exports.handler = async function(event, context) {
         firstName: firstName || '',
         lastName: lastName || '',
         role: 'user',
-        createdAt: new Date()
+        createdAt: new Date(),
+        isVerified: false,
+        trialExpiresAt: null
       };
       
       users.push(newUser);

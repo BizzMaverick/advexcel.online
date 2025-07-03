@@ -37,12 +37,27 @@ exports.handler = async function(event, context) {
     // DEMO: Replace this with real verification logic
     console.log(`[DEMO] Verifying OTP for ${identifier}: ${otp}`);
 
+    // Find user by email or phone (for demo, only email is supported)
+    const { users } = require('./auth');
+    const user = users.find(u => u.email === identifier);
+    if (!user) {
+      return {
+        statusCode: 404,
+        headers,
+        body: JSON.stringify({ success: false, message: 'User not found' }),
+      };
+    }
+    // Mark as verified and set trialExpiresAt
+    user.isVerified = true;
+    user.trialExpiresAt = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000); // 10 days from now
+
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         success: true,
-        message: 'Verification successful (demo mode)',
+        message: 'Verification successful. Free trial started.',
+        trialExpiresAt: user.trialExpiresAt
       }),
     };
   } catch (error) {

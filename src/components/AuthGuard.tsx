@@ -20,6 +20,13 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
 }) => {
   const { user, isAuthenticated, isLoading, hasPermission, hasRole } = useAuth();
 
+  const trialDaysRemaining = typeof user?.trialExpiresAt === 'string' ? (() => {
+    const expires = new Date(user.trialExpiresAt!);
+    const now = new Date();
+    const diff = expires.getTime() - now.getTime();
+    return diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
+  })() : null;
+
   useEffect(() => {
     if (redirectTo && !isAuthenticated && !isLoading) {
       window.location.href = redirectTo;
@@ -126,6 +133,21 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
         </div>
       );
     }
+  }
+
+  // Check trial period
+  if (user && user.trialExpiresAt && trialDaysRemaining === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
+          <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Free Trial Expired</h2>
+          <p className="text-gray-600 mb-6">
+            Your 10-day free trial has expired. Please subscribe to continue using the service.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   // All checks passed, render children

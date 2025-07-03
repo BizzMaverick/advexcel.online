@@ -125,8 +125,8 @@ export const useOtpVerification = ({ onSuccess, onError }: OtpVerificationProps 
         
         setSuccess('Verification successful');
         setOtpSent(false);
+        // trialExpiresAt is not available in local fallback
         onSuccess?.();
-        
         return true;
       } catch (netlifyError) {
         console.warn('Netlify function failed, trying API endpoint:', netlifyError);
@@ -148,8 +148,8 @@ export const useOtpVerification = ({ onSuccess, onError }: OtpVerificationProps 
         
         setSuccess('Verification successful');
         setOtpSent(false);
+        // trialExpiresAt is not available in local fallback
         onSuccess?.();
-        
         return true;
       }
     } catch (err) {
@@ -203,6 +203,7 @@ export const useOtpVerification = ({ onSuccess, onError }: OtpVerificationProps 
         
         setSuccess('Verification successful');
         setOtpSent(false);
+        // trialExpiresAt is not available in local fallback
         onSuccess?.();
         
         return true;
