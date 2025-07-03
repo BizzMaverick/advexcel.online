@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Dashboard from './components/Dashboard';
 import Navbar from './components/Navbar';
@@ -41,6 +41,12 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   
   const { isAuthenticated, user, logout } = useAuthContext();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setShowAuthModal(true);
+    }
+  }, [isAuthenticated]);
 
   const handleImportFile = (data: any) => {
     setSpreadsheetData(data);
