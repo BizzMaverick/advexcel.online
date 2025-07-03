@@ -1,3 +1,8 @@
+const { Pool } = require('@neondatabase/serverless');
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+console.log('send-otp function loaded.');
+
 exports.handler = async function(event, context) {
   // Enable CORS
   const headers = {
@@ -34,11 +39,34 @@ exports.handler = async function(event, context) {
       };
     }
 
+    // Check if user exists
+    const { rows: userRows } = await pool.query('SELECT * FROM users WHERE email = $1', [identifier]);
+    const user = userRows[0];
+    if (!user) {
+      console.log('User not found for OTP:', identifier);
+      return {
+        statusCode: 404,
+        headers,
+        body: JSON.stringify({ success: false, message: 'User not found' })
+      };
+    }
+
     // Generate a 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
 
-    // In a real implementation, we would send the OTP via email or SMS
-    // For demo purposes, we'll just return it in the response
+    // Store OTP in a new otps table (create if not exists)
+    await pool.query(
+      'CREATE TABLE IF NOT EXISTS otps (id SERIAL PRIMARY KEY, email TEXT, otp TEXT, expires_at TIMESTAMP, created_at TIMESTAMP DEFAULT NOW())'
+    );
+    await pool.query(
+      'INSERT INTO otps (email, otp, expires_at) VALUES ($1, $2, $3)',
+      [identifier, otp, expiresAt]
+    );
+    console.log('OTP generated and stored:', { identifier, otp, expiresAt });
+
+    // In a real implementation, send the OTP via email or SMS here
+    // For demo, just log it
     console.log(`[DEMO] OTP for ${identifier}: ${otp}`);
 
     return {
@@ -52,11 +80,11 @@ exports.handler = async function(event, context) {
       })
     };
   } catch (error) {
-    console.error('Error processing request:', error);
+    console.error('Error in send-otp:', error);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ success: false, message: 'Internal server error' })
+      body: JSON.stringify({ success: false, message: 'Internal server error', error: error.message, stack: error.stack })
     };
   }
 };
