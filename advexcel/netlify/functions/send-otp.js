@@ -106,23 +106,8 @@ exports.handler = async function(event, context) {
         };
       }
     } else {
-      // Send via SMS (Twilio integration - future)
-      // try {
-      //   await twilioClient.messages.create({
-      //     body: `Your verification code is: ${otp}`,
-      //     from: process.env.TWILIO_PHONE_NUMBER,
-      //     to: identifier
-      //   });
-      //   console.log('OTP sent via SMS to:', identifier);
-      // } catch (smsErr) {
-      //   console.error('Error sending OTP SMS:', smsErr);
-      //   return {
-      //     statusCode: 500,
-      //     headers,
-      //     body: JSON.stringify({ success: false, message: 'Failed to send verification SMS', error: smsErr.message })
-      //   };
       // For now, SMS OTP is not active. Only email OTP is sent.
-      console.log(`SMS OTP logic is commented out. OTP for ${identifier}: ${otp}`);
+      console.log(`SMS OTP logic is removed. OTP for ${identifier}: ${otp}`);
     }
 
     return {
