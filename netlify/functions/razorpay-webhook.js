@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { AuthService } = require('../utils/authService');
+const { AuthService } = require('./authService');
 
 exports.handler = async function (event) {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
