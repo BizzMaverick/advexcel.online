@@ -36,7 +36,7 @@ export class SecurityService {
   }
 
   static getBlockedIPs(): string[] {
-    return Array.from(this.blockedIPs);
+    return Array.from(Array.isArray(this.blockedIPs) ? this.blockedIPs : []);
   }
 
   // Suspicious Activity Detection
@@ -83,7 +83,7 @@ export class SecurityService {
   static generateCSRFToken(): string {
     const array = new Uint8Array(32);
     crypto.getRandomValues(array);
-    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+    return Array.from(Array.isArray(array) ? array : [], byte => byte.toString(16).padStart(2, '0')).join('');
   }
 
   static validateCSRFToken(token: string, expectedToken: string): boolean {
@@ -119,7 +119,7 @@ export class SecurityService {
   static generateSecureSessionId(): string {
     const array = new Uint8Array(32);
     crypto.getRandomValues(array);
-    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+    return Array.from(Array.isArray(array) ? array : [], byte => byte.toString(16).padStart(2, '0')).join('');
   }
 
   static validateSessionIntegrity(sessionData: any): boolean {
@@ -277,7 +277,7 @@ export class SecurityService {
 
   private static persistBlockedIPs(): void {
     try {
-      localStorage.setItem('blocked_ips', JSON.stringify(Array.from(this.blockedIPs)));
+      localStorage.setItem('blocked_ips', JSON.stringify(Array.from(Array.isArray(this.blockedIPs) ? this.blockedIPs : [])));
     } catch (error) {
       console.error('Failed to persist blocked IPs:', error);
     }

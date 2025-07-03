@@ -188,7 +188,7 @@ export class MemoryManager {
   }
 
   private static clearOldestCacheEntries(): void {
-    const entries = Array.from(this.cache.entries());
+    const entries = Array.from(this.cache && this.cache.entries ? this.cache.entries() : []);
     entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
     
     // Remove oldest 25% of entries

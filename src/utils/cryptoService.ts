@@ -9,7 +9,7 @@ export class CryptoService {
     const encoder = new TextEncoder();
     const data = encoder.encode(password + this.generateSalt());
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashArray = Array.from(hashBuffer ? new Uint8Array(hashBuffer) : []);
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
@@ -78,7 +78,7 @@ export class CryptoService {
   static generateCSRFToken(): string {
     const array = new Uint8Array(32);
     crypto.getRandomValues(array);
-    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+    return Array.from(Array.isArray(array) ? array : [], byte => byte.toString(16).padStart(2, '0')).join('');
   }
 
   static verifyCSRFToken(token: string, expectedToken: string): boolean {
@@ -89,14 +89,14 @@ export class CryptoService {
   static generateSecureRandom(length: number): string {
     const array = new Uint8Array(length);
     crypto.getRandomValues(array);
-    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+    return Array.from(Array.isArray(array) ? array : [], byte => byte.toString(16).padStart(2, '0')).join('');
   }
 
   // Private helper methods
   private static generateSalt(): string {
     const array = new Uint8Array(16);
     crypto.getRandomValues(array);
-    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+    return Array.from(Array.isArray(array) ? array : [], byte => byte.toString(16).padStart(2, '0')).join('');
   }
 
   private static constantTimeCompare(a: string, b: string): boolean {
