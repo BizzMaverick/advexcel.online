@@ -50,7 +50,9 @@ const SpreadsheetGrid = ({ data }: SpreadsheetGridProps) => {
         });
 
         setGridData(rows);
-        setHeaders(Array.from({ length: maxCol }, (_, i) => String.fromCharCode(65 + i)));
+        // Defensive: ensure maxCol is a valid number
+        const safeMaxCol = Number.isFinite(maxCol) && maxCol > 0 ? maxCol : 0;
+        setHeaders(Array.from({ length: safeMaxCol }, (_, i) => String.fromCharCode(65 + i)));
       }
     }
   }, [data]);
