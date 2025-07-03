@@ -1,0 +1,118 @@
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Dashboard from './components/Dashboard';
+import Navbar from './components/Navbar';
+import Sidebar from './components/Sidebar';
+import Footer from './components/Footer';
+import ImportModal from './components/ImportModal';
+import ExportModal from './components/ExportModal';
+import { AuthModal } from './components/AuthModal';
+import { useAuthContext } from './context/AuthContext';
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 40, color: 'red', background: '#fff' }}>
+          <h1>Something went wrong.</h1>
+          <pre>{this.state.error?.toString()}</pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function App() {
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [spreadsheetData, setSpreadsheetData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const { isAuthenticated, user, logout } = useAuthContext();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setShowAuthModal(true);
+    }
+  }, [isAuthenticated]);
+
+  const handleImportFile = (data: any) => {
+    setSpreadsheetData(data);
+    setShowImportModal(false);
+  };
+
+  const handleExportFile = () => {
+    // Export logic will be implemented here
+    setShowExportModal(false);
+  };
+
+  const handleAuthSuccess = () => {
+    // Handle successful authentication
+    setShowAuthModal(false);
+  };
+
+  return (
+    <ErrorBoundary>
+      <Router>
+        <div className="min-h-screen flex flex-col bg-gray-50">
+          <Navbar 
+            onImportClick={() => setShowImportModal(true)} 
+            onExportClick={() => setShowExportModal(true)}
+            onAuthClick={() => setShowAuthModal(true)}
+            isAuthenticated={isAuthenticated}
+            user={user}
+            onLogout={logout}
+          />
+          
+          <div className="flex flex-1">
+            <Sidebar />
+            
+            <main className="flex-1 p-6">
+              <Routes>
+                <Route path="/" element={<Dashboard data={spreadsheetData} isLoading={isLoading} />} />
+              </Routes>
+            </main>
+          </div>
+          
+          <Footer />
+          
+          {showImportModal && (
+            <ImportModal 
+              onClose={() => setShowImportModal(false)} 
+              onImport={handleImportFile}
+              setIsLoading={setIsLoading}
+            />
+          )}
+          
+          {showExportModal && (
+            <ExportModal 
+              onClose={() => setShowExportModal(false)} 
+              onExport={handleExportFile}
+              hasData={!!spreadsheetData}
+            />
+          )}
+          
+          <AuthModal 
+            isVisible={showAuthModal} 
+            onClose={() => setShowAuthModal(false)}
+            onAuthSuccess={handleAuthSuccess}
+          />
+        </div>
+      </Router>
+    </ErrorBoundary>
+  );
+}
+
+export default App;
