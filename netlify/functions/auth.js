@@ -22,6 +22,7 @@ async function createUser({ email, password, firstName, lastName, role, isVerifi
 }
 
 exports.handler = async function(event, context) {
+  console.log('Auth function loaded.');
   // Enable CORS
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -40,6 +41,7 @@ exports.handler = async function(event, context) {
   const path = event.path.replace(/^\/\.netlify\/functions\/auth\/?/, '');
   
   try {
+    console.log('Received event:', { path, method: event.httpMethod });
     // Login endpoint
     if (path === 'login' && event.httpMethod === 'POST') {
       const { email, password } = JSON.parse(event.body);
@@ -53,7 +55,10 @@ exports.handler = async function(event, context) {
       }
       
       // Find user
+      console.log('Attempting login for email:', email);
       const user = await getUserByEmail(email);
+      console.log('User found:', !!user, user && { id: user.id, email: user.email });
+      
       if (!user) {
         return {
           statusCode: 401,
@@ -103,6 +108,7 @@ exports.handler = async function(event, context) {
         { expiresIn: '7d' }
       );
       
+      console.log('Registration/login successful for:', user ? user.email : 'unknown user');
       return {
         statusCode: 200,
         headers,
@@ -139,7 +145,9 @@ exports.handler = async function(event, context) {
       }
       
       // Check if user already exists
+      console.log('Attempting registration for email:', email);
       const existingUser = await getUserByEmail(email);
+      console.log('Existing user:', !!existingUser, existingUser && { id: existingUser.id, email: existingUser.email });
       if (existingUser) {
         return {
           statusCode: 400,
@@ -162,6 +170,7 @@ exports.handler = async function(event, context) {
         isVerified: false,
         trialExpiresAt: null
       });
+      console.log('New user created:', newUser && { id: newUser.id, email: newUser.email });
       
       // Generate tokens
       const accessToken = jwt.sign(
@@ -176,6 +185,7 @@ exports.handler = async function(event, context) {
         { expiresIn: '7d' }
       );
       
+      console.log('Registration/login successful for:', newUser ? newUser.email : 'unknown user');
       return {
         statusCode: 201,
         headers,
@@ -298,12 +308,11 @@ exports.handler = async function(event, context) {
     };
     
   } catch (error) {
-    console.error('Auth function error:', error);
-    
+    console.error('Error processing request:', error);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ success: false, message: 'Internal server error' })
+      body: JSON.stringify({ success: false, message: 'Internal server error', error: error.message, stack: error.stack })
     };
   }
 };
