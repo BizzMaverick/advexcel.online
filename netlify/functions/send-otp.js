@@ -1,7 +1,26 @@
 const { Pool } = require('@neondatabase/serverless');
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const nodemailer = require('nodemailer');
+const twilio = require('twilio');
 
 console.log('send-otp function loaded.');
+
+// Setup Nodemailer transporter for GoDaddy SMTP
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT, 10),
+  secure: process.env.SMTP_PORT === '465', // true for 465, false for 587
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
+
+// Setup Twilio client
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
 
 exports.handler = async function(event, context) {
   // Enable CORS
@@ -65,9 +84,44 @@ exports.handler = async function(event, context) {
     );
     console.log('OTP generated and stored:', { identifier, otp, expiresAt });
 
-    // In a real implementation, send the OTP via email or SMS here
-    // For demo, just log it
-    console.log(`[DEMO] OTP for ${identifier}: ${otp}`);
+    // Send OTP via email or SMS
+    if (identifier.includes('@')) {
+      // Send via email
+      try {
+        await transporter.sendMail({
+          from: process.env.SMTP_USER,
+          to: identifier,
+          subject: 'Your Verification Code',
+          text: `Your verification code is: ${otp}`,
+          html: `<p>Your verification code is: <b>${otp}</b></p>`
+        });
+        console.log('OTP sent via email to:', identifier);
+      } catch (emailErr) {
+        console.error('Error sending OTP email:', emailErr);
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({ success: false, message: 'Failed to send verification email', error: emailErr.message })
+        };
+      }
+    } else {
+      // Send via SMS
+      try {
+        await twilioClient.messages.create({
+          body: `Your verification code is: ${otp}`,
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: identifier
+        });
+        console.log('OTP sent via SMS to:', identifier);
+      } catch (smsErr) {
+        console.error('Error sending OTP SMS:', smsErr);
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({ success: false, message: 'Failed to send verification SMS', error: smsErr.message })
+        };
+      }
+    }
 
     return {
       statusCode: 200,
