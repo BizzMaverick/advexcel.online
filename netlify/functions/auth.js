@@ -1,11 +1,25 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const { Pool } = require('@neondatabase/serverless');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_change_in_production';
 
-// In-memory user store for demo purposes
-// In production, this would be a database
-const users = [];
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+// Helper: get user by email
+async function getUserByEmail(email) {
+  const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+  return rows[0] || null;
+}
+
+// Helper: create user
+async function createUser({ email, password, firstName, lastName, role, isVerified, trialExpiresAt }) {
+  const { rows } = await pool.query(
+    'INSERT INTO users (email, password, first_name, last_name, role, is_verified, trial_expires_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW()) RETURNING *',
+    [email, password, firstName, lastName, role, isVerified, trialExpiresAt]
+  );
+  return rows[0];
+}
 
 exports.handler = async function(event, context) {
   // Enable CORS
@@ -39,7 +53,7 @@ exports.handler = async function(event, context) {
       }
       
       // Find user
-      const user = users.find(u => u.email === email);
+      const user = await getUserByEmail(email);
       if (!user) {
         return {
           statusCode: 401,
@@ -49,7 +63,7 @@ exports.handler = async function(event, context) {
       }
       
       // Require verification
-      if (!user.isVerified) {
+      if (!user.is_verified) {
         return {
           statusCode: 403,
           headers,
@@ -58,7 +72,7 @@ exports.handler = async function(event, context) {
       }
       
       // Check if trial is expired
-      if (user.trialExpiresAt && new Date(user.trialExpiresAt) < new Date()) {
+      if (user.trial_expires_at && new Date(user.trial_expires_at) < new Date()) {
         return {
           statusCode: 403,
           headers,
@@ -97,10 +111,10 @@ exports.handler = async function(event, context) {
           user: {
             id: user.id,
             email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName,
+            firstName: user.first_name,
+            lastName: user.last_name,
             role: user.role,
-            trialExpiresAt: user.trialExpiresAt
+            trialExpiresAt: user.trial_expires_at
           },
           tokens: {
             accessToken,
@@ -125,7 +139,8 @@ exports.handler = async function(event, context) {
       }
       
       // Check if user already exists
-      if (users.some(u => u.email === email)) {
+      const existingUser = await getUserByEmail(email);
+      if (existingUser) {
         return {
           statusCode: 400,
           headers,
@@ -137,20 +152,16 @@ exports.handler = async function(event, context) {
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
       
-      // Create user
-      const newUser = {
-        id: Date.now().toString(),
+      // Create user in DB
+      const newUser = await createUser({
         email,
         password: hashedPassword,
         firstName: firstName || '',
         lastName: lastName || '',
         role: 'user',
-        createdAt: new Date(),
         isVerified: false,
         trialExpiresAt: null
-      };
-      
-      users.push(newUser);
+      });
       
       // Generate tokens
       const accessToken = jwt.sign(
@@ -173,8 +184,8 @@ exports.handler = async function(event, context) {
           user: {
             id: newUser.id,
             email: newUser.email,
-            firstName: newUser.firstName,
-            lastName: newUser.lastName,
+            firstName: newUser.first_name,
+            lastName: newUser.last_name,
             role: newUser.role
           },
           tokens: {
@@ -208,7 +219,7 @@ exports.handler = async function(event, context) {
         }
         
         // Find user
-        const user = users.find(u => u.id === decoded.userId);
+        const user = await getUserByEmail(decoded.email);
         if (!user) {
           throw new Error('User not found');
         }
