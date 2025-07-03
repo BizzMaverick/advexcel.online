@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Dashboard from './components/Dashboard';
 import Navbar from './components/Navbar';
@@ -8,6 +8,30 @@ import ImportModal from './components/ImportModal';
 import ExportModal from './components/ExportModal';
 import { AuthModal } from './components/AuthModal';
 import { useAuthContext } from './context/AuthContext';
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 40, color: 'red', background: '#fff' }}>
+          <h1>Something went wrong.</h1>
+          <pre>{this.state.error?.toString()}</pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function App() {
   const [showImportModal, setShowImportModal] = useState(false);
@@ -34,52 +58,54 @@ function App() {
   };
 
   return (
-    <Router>
-      <div className="min-h-screen flex flex-col bg-gray-50">
-        <Navbar 
-          onImportClick={() => setShowImportModal(true)} 
-          onExportClick={() => setShowExportModal(true)}
-          onAuthClick={() => setShowAuthModal(true)}
-          isAuthenticated={isAuthenticated}
-          user={user}
-          onLogout={logout}
-        />
-        
-        <div className="flex flex-1">
-          <Sidebar />
+    <ErrorBoundary>
+      <Router>
+        <div className="min-h-screen flex flex-col bg-gray-50">
+          <Navbar 
+            onImportClick={() => setShowImportModal(true)} 
+            onExportClick={() => setShowExportModal(true)}
+            onAuthClick={() => setShowAuthModal(true)}
+            isAuthenticated={isAuthenticated}
+            user={user}
+            onLogout={logout}
+          />
           
-          <main className="flex-1 p-6">
-            <Routes>
-              <Route path="/" element={<Dashboard data={spreadsheetData} isLoading={isLoading} />} />
-            </Routes>
-          </main>
+          <div className="flex flex-1">
+            <Sidebar />
+            
+            <main className="flex-1 p-6">
+              <Routes>
+                <Route path="/" element={<Dashboard data={spreadsheetData} isLoading={isLoading} />} />
+              </Routes>
+            </main>
+          </div>
+          
+          <Footer />
+          
+          {showImportModal && (
+            <ImportModal 
+              onClose={() => setShowImportModal(false)} 
+              onImport={handleImportFile}
+              setIsLoading={setIsLoading}
+            />
+          )}
+          
+          {showExportModal && (
+            <ExportModal 
+              onClose={() => setShowExportModal(false)} 
+              onExport={handleExportFile}
+              hasData={!!spreadsheetData}
+            />
+          )}
+          
+          <AuthModal 
+            isVisible={showAuthModal} 
+            onClose={() => setShowAuthModal(false)}
+            onAuthSuccess={handleAuthSuccess}
+          />
         </div>
-        
-        <Footer />
-        
-        {showImportModal && (
-          <ImportModal 
-            onClose={() => setShowImportModal(false)} 
-            onImport={handleImportFile}
-            setIsLoading={setIsLoading}
-          />
-        )}
-        
-        {showExportModal && (
-          <ExportModal 
-            onClose={() => setShowExportModal(false)} 
-            onExport={handleExportFile}
-            hasData={!!spreadsheetData}
-          />
-        )}
-        
-        <AuthModal 
-          isVisible={showAuthModal} 
-          onClose={() => setShowAuthModal(false)}
-          onAuthSuccess={handleAuthSuccess}
-        />
-      </div>
-    </Router>
+      </Router>
+    </ErrorBoundary>
   );
 }
 
