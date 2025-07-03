@@ -16,7 +16,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // --- Twilio SMS OTP integration (future) ---
-// const twilio = require('twilio');
+// (Twilio require/import removed to prevent Netlify bundling error)
 // const twilioClient = twilio(
 //   process.env.TWILIO_ACCOUNT_SID,
 //   process.env.TWILIO_AUTH_TOKEN
