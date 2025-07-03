@@ -11,3 +11,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </AuthProvider>
   </React.StrictMode>,
 )
+
+window.onerror = function (message, source, lineno, colno, error) {
+  console.log('Global error:', { message, source, lineno, colno, error });
+};
