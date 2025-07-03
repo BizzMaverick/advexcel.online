@@ -3,9 +3,9 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { AuthProvider } from './context/AuthContext'
-import { Buffer } from 'buffer'
+import * as buffer from 'buffer'
 
-window.Buffer = Buffer
+window.Buffer = buffer.Buffer
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
