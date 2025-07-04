@@ -103,6 +103,8 @@ export interface SignupData {
   lastName?: string;
   company?: string;
   acceptTerms: boolean;
+  securityQuestion: string;
+  securityAnswer: string;
 }
 
 export interface AuditLog {

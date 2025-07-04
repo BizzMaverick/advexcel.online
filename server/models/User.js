@@ -40,6 +40,14 @@ const UserSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  securityQuestion: {
+    type: String,
+    required: [true, 'Security question is required']
+  },
+  securityAnswer: {
+    type: String,
+    required: [true, 'Security answer is required']
+  },
   subscription: {
     type: {
       type: String,

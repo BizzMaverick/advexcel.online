@@ -35,9 +35,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
   const [success, setSuccess] = useState('');
   const [showReferralInput, setShowReferralInput] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState('');
-  const [demoOTP, setDemoOTP] = useState('');
 
   // Calculate password strength
   useEffect(() => {
@@ -153,87 +150,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
         if (!result.success) {
           throw new Error(result.message || 'Registration failed');
         }
-
-        // Send OTP for verification
-        await sendOTP();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setIsAuthLoading(false);
-    }
-  };
-
-  const sendOTP = async () => {
-    setIsAuthLoading(true);
-    try {
-      const response = await fetch('/api/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          identifier: formData.identifier, 
-          type: identifierType 
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to send verification code');
-      }
-
-      // For demo purposes, show the OTP
-      if (identifierType === 'email') {
-        const storedData = localStorage.getItem(`otp_${formData.identifier}`);
-        if (storedData) {
-          const { code } = JSON.parse(storedData);
-          setDemoOTP(code);
-        }
-      }
-
-      setOtpSent(true);
-      setSuccess('Verification code sent! Please check your ' + 
-        (identifierType === 'email' ? 'email' : 'phone'));
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to send verification code');
-    } finally {
-      setIsAuthLoading(false);
-    }
-  };
-
-  const handleVerifyOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsAuthLoading(true);
-
-    try {
-      if (otp.length !== 6) {
-        throw new Error('Please enter a valid 6-digit verification code');
-      }
-
-      const verifyResult = await fetch('/api/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: formData.identifier, otp })
-      });
-
-      if (!verifyResult.ok) {
-        throw new Error('Invalid verification code');
-      }
-
-      // Login after verification
-      const loginResult = await login({
-        identifier: formData.identifier,
-        password: formData.password,
-        rememberDevice: formData.rememberDevice
-      });
-
-      if (!loginResult.success) {
-        throw new Error(loginResult.message || 'Login failed after verification');
-      }
-
-      setSuccess('Account verified successfully!');
-      setOtpSent(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Verification failed');
     } finally {
       setIsAuthLoading(false);
     }
@@ -305,105 +224,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onImportFile, onCr
       color: "from-purple-500 to-pink-500"
     }
   ];
-
-  // Show OTP verification form if OTP was sent
-  if (otpSent) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex flex-col">
-        <header className="bg-white/10 backdrop-blur-sm border-b border-white/20 px-6 py-4 sticky top-0 z-10">
-          <div className="flex items-center justify-between max-w-7xl mx-auto">
-            <div className="flex items-center space-x-3">
-              <Logo size="lg" />
-              <div>
-                <h1 className="text-2xl font-bold text-white">Excel Pro AI</h1>
-                <p className="text-sm text-slate-300">Advanced spreadsheet analysis with AI-powered insights</p>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 shadow-xl max-w-md w-full">
-            <div className="text-center mb-6">
-              <h3 className="text-2xl font-bold text-white mb-2">Verify Your Account</h3>
-              <p className="text-slate-300">
-                We've sent a verification code to your {identifierType === 'email' ? 'email' : 'phone'}
-              </p>
-            </div>
-
-            {/* Demo OTP display */}
-            {demoOTP && (
-              <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-4 mb-6">
-                <div className="flex items-start space-x-3">
-                  <div className="flex-1">
-                    <h3 className="text-sm font-medium text-yellow-300">Demo Mode: Verification Code</h3>
-                    <p className="text-lg font-mono text-white mt-1 text-center">{demoOTP}</p>
-                    <p className="text-xs text-yellow-200 mt-1">
-                      In a production environment, this code would be sent to your {identifierType === 'email' ? 'email' : 'phone'}.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <form onSubmit={handleVerifyOTP} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Verification Code
-                </label>
-                <input
-                  type="text"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white text-center text-lg tracking-widest"
-                  placeholder="000000"
-                  maxLength={6}
-                  required
-                />
-              </div>
-
-              {error && (
-                <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3 text-sm text-red-200">
-                  {error}
-                </div>
-              )}
-
-              {success && (
-                <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-3 text-sm text-green-200">
-                  {success}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={isAuthLoading || otp.length !== 6}
-                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white py-3 px-4 rounded-lg hover:from-cyan-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center space-x-2"
-              >
-                {isAuthLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    <span>Verifying...</span>
-                  </>
-                ) : (
-                  <span>Verify & Start Free Trial</span>
-                )}
-              </button>
-
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={() => setOtpSent(false)}
-                  className="text-sm text-blue-400 hover:text-blue-300"
-                >
-                  Back to sign up
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex flex-col">

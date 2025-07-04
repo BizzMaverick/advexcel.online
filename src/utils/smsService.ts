@@ -68,32 +68,6 @@ export class SMSService {
     }
   }
 
-  static async verifyOTP(phoneNumber: string, otp: string): Promise<boolean> {
-    // In production, this would verify against a database or cache
-    // For demo purposes, we'll check our in-memory store
-    const storedData = this.sentMessages.get(phoneNumber);
-    
-    if (!storedData) {
-      return false;
-    }
-    
-    // Check if OTP is expired (5 minutes)
-    if (Date.now() - storedData.timestamp > 5 * 60 * 1000) {
-      this.sentMessages.delete(phoneNumber);
-      return false;
-    }
-    
-    // Verify OTP
-    const isValid = storedData.otp === otp;
-    
-    // Remove OTP after verification attempt
-    if (isValid) {
-      this.sentMessages.delete(phoneNumber);
-    }
-    
-    return isValid;
-  }
-
   // Helper methods
   private static isValidPhoneNumber(phoneNumber: string): boolean {
     // Basic validation - in production use a proper library like libphonenumber-js

@@ -7,7 +7,7 @@ const router = express.Router();
 // Register a new user
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, firstName, lastName } = req.body;
+    const { email, password, firstName, lastName, securityQuestion, securityAnswer } = req.body;
 
     // Check if user already exists
     let user = await User.findOne({ email });
@@ -21,6 +21,8 @@ router.post('/register', async (req, res) => {
       password,
       firstName,
       lastName,
+      securityQuestion,
+      securityAnswer,
       subscription: {
         type: 'trial',
         startDate: new Date(),
@@ -168,6 +170,29 @@ router.put('/change-password', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Change password error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Forgot password using security question
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email, securityQuestion, securityAnswer, newPassword } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'User not found' });
+    }
+    if (user.securityQuestion !== securityQuestion) {
+      return res.status(400).json({ success: false, message: 'Security question does not match' });
+    }
+    if (user.securityAnswer !== securityAnswer) {
+      return res.status(400).json({ success: false, message: 'Security answer is incorrect' });
+    }
+    user.password = newPassword;
+    await user.save();
+    res.json({ success: true, message: 'Password reset successful' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

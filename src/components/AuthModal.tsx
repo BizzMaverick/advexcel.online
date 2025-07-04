@@ -20,6 +20,20 @@ interface AuthModalProps {
 type AuthMode = 'login' | 'signup' | 'otp' | 'forgot-password' | 'reset-password' | 'mfa';
 type IdentifierType = 'email' | 'phone';
 
+// Add security questions list at the top-level, outside the component
+const SECURITY_QUESTIONS = [
+  'Which school did you study?',
+  'What is your 10th marks?',
+  'What is your pet name?',
+  'Who is your best friend?',
+  'What is your favorite color?',
+  "What is your mother's maiden name?",
+  'What is your favorite food?',
+  'What city were you born in?',
+  'What is your favorite movie?',
+  'What is your first car?'
+];
+
 export const AuthModal: React.FC<AuthModalProps> = ({ 
   isVisible, 
   onClose, 
@@ -41,15 +55,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     lastName: '',
     company: '',
     acceptTerms: false,
-    rememberDevice: true
+    rememberDevice: true,
+    securityQuestion: SECURITY_QUESTIONS[0],
+    securityAnswer: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [otpTimer, setOtpTimer] = useState(0);
-  const [demoOTP, setDemoOTP] = useState('');
   const [showReferralInput, setShowReferralInput] = useState(false);
   const [csrfToken, setCsrfToken] = useState('');
   const [passwordStrength, setPasswordStrength] = useState(0);
@@ -118,71 +132,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  const startOtpTimer = () => {
-    setOtpTimer(60);
-    const interval = setInterval(() => {
-      setOtpTimer((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
-  const sendOTP = async () => {
-    setIsLoading(true);
-    setError('');
-    
-    try {
-      const response = await fetch('/api/send-otp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          identifier: formData.identifier,
-          type: identifierType
-        })
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setSuccess(result.message);
-        startOtpTimer();
-        
-        // For demo purposes, retrieve the OTP that was generated
-        if (result.demo?.otp) {
-          setDemoOTP(result.demo.otp);
-        } else if (identifierType === 'email') {
-          // Get email OTP from localStorage for demo
-          const storedData = localStorage.getItem(`otp_${formData.identifier}`);
-          if (storedData) {
-            const { code } = JSON.parse(storedData);
-            setDemoOTP(code);
-          }
-        }
-        
-        // Automatically switch to OTP verification mode
-        setMode('otp');
-      } else {
-        setError(result.message || 'Failed to send verification code');
-      }
-    } catch (error) {
-      setError('Failed to send verification code. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const copyOTPToClipboard = () => {
-    navigator.clipboard.writeText(demoOTP);
-    setSuccess('Code copied to clipboard!');
-    setTimeout(() => setSuccess(''), 2000);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -230,6 +179,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         if (!formData.acceptTerms) {
           throw new Error('You must accept the terms and conditions');
         }
+        if (!formData.securityQuestion) {
+          throw new Error('Please select a security question');
+        }
+        if (!formData.securityAnswer || formData.securityAnswer.length < 2) {
+          throw new Error('Please provide an answer to your security question');
+        }
 
         // Validate referral code if provided
         if (formData.referralCode) {
@@ -246,7 +201,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           firstName: formData.firstName,
           lastName: formData.lastName,
           company: formData.company,
-          acceptTerms: formData.acceptTerms
+          acceptTerms: formData.acceptTerms,
+          securityQuestion: formData.securityQuestion,
+          securityAnswer: formData.securityAnswer,
         };
 
         const result = await register(signupData);
@@ -257,7 +214,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             onVerificationRequest(formData.identifier, identifierType);
             onClose();
           } else {
-            await sendOTP();
+            // Automatically switch to OTP verification mode
+            setMode('otp');
           }
         } else {
           throw new Error(result.message || 'Registration failed');
@@ -283,58 +241,34 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         } else {
           throw new Error(result.message || 'MFA verification failed');
         }
-      } else if (mode === 'otp') {
-        if (formData.otp.length !== 6) {
-          throw new Error('Please enter a valid 6-digit verification code');
+      } else if (mode === 'forgot-password') {
+        if (!validateEmail(formData.identifier)) {
+          throw new Error('Please enter a valid email');
         }
-
-        // Verify OTP
-        const response = await fetch('/api/verify-otp', {
+        if (!formData.securityQuestion) {
+          throw new Error('Please select your security question');
+        }
+        if (!formData.securityAnswer || formData.securityAnswer.length < 2) {
+          throw new Error('Please provide the answer to your security question');
+        }
+        // Call backend forgot-password endpoint
+        const response = await fetch('/api/forgot-password', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            identifier: formData.identifier,
-            otp: formData.otp
+            email: formData.identifier,
+            securityQuestion: formData.securityQuestion,
+            securityAnswer: formData.securityAnswer,
+            newPassword: formData.password
           })
         });
-        
         const result = await response.json();
-        
-        if (!result.success) {
-          throw new Error(result.message || 'Invalid verification code');
-        }
-
-        setSuccess('Verification successful!');
-
-        // OTP verified, proceed with login
-        const credentials: LoginCredentials = {
-          identifier: formData.identifier,
-          password: formData.password,
-          rememberDevice: formData.rememberDevice
-        };
-
-        const loginResult = await login(credentials);
-        
-        if (loginResult.success && loginResult.user) {
-          // Apply referral code if provided
-          if (formData.referralCode && ReferralService.applyReferral) {
-            ReferralService.applyReferral(formData.referralCode, loginResult.user.id);
-          }
-          
-          onAuthSuccess(loginResult.user);
-          onClose();
+        if (result.success) {
+          setSuccess('Password reset successful!');
+          setMode('login');
         } else {
-          throw new Error(loginResult.message || 'Login failed after verification');
+          throw new Error(result.message || 'Failed to reset password');
         }
-      } else if (mode === 'forgot-password') {
-        if (!validateIdentifier()) {
-          throw new Error(`Please enter a valid ${identifierType}`);
-        }
-
-        await sendOTP();
-        setMode('reset-password');
       } else if (mode === 'reset-password') {
         if (formData.otp.length !== 6) {
           throw new Error('Please enter a valid 6-digit verification code');
@@ -402,13 +336,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       lastName: '',
       company: '',
       acceptTerms: false,
-      rememberDevice: true
+      rememberDevice: true,
+      securityQuestion: SECURITY_QUESTIONS[0],
+      securityAnswer: '',
     });
     setError('');
     setSuccess('');
-    setOtpTimer(0);
-    setDemoOTP('');
-    setShowReferralInput(false);
   };
 
   const switchMode = (newMode: AuthMode) => {
@@ -478,35 +411,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Demo Notice for OTP */}
-          {(mode === 'otp' || mode === 'reset-password' || mode === 'mfa') && demoOTP && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-              <div className="flex items-start space-x-3">
-                <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
-                <div className="flex-1">
-                  <h3 className="text-sm font-medium text-blue-800">Verification Code Sent</h3>
-                  <p className="text-xs text-blue-700 mt-1">
-                    A verification code has been sent to your {identifierType === 'email' ? 'email' : 'phone'}.
-                    {identifierType === 'phone' && (
-                      <span> Check your SMS messages.</span>
-                    )}
-                  </p>
-                  {/* For demo purposes only - in production this would not be shown */}
-                  <div className="mt-2 p-2 bg-yellow-100 rounded-md">
-                    <p className="text-xs font-medium text-yellow-800">Demo Mode: Your code is <strong className="font-mono text-lg">{demoOTP}</strong></p>
-                    <button
-                      onClick={copyOTPToClipboard}
-                      className="mt-1 flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-700"
-                    >
-                      <Copy className="h-3 w-3" />
-                      <span>Copy Code</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* CSRF Token (hidden) */}
@@ -706,19 +610,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <p className="text-sm text-gray-600">
                     Enter the 6-digit code sent to your {identifierType === 'email' ? 'email' : 'phone'}
                   </p>
-                  {otpTimer > 0 ? (
-                    <span className="text-sm text-blue-600">Resend in {otpTimer}s</span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={sendOTP}
-                      disabled={isLoading}
-                      className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
-                    >
-                      <RefreshCw className="h-3 w-3" />
-                      <span>Resend Code</span>
-                    </button>
-                  )}
                 </div>
               </div>
             )}
@@ -817,6 +708,36 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     </p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Security Question Select */}
+            {(mode === 'signup' || mode === 'forgot-password') && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1">Security Question</label>
+                <select
+                  className="w-full border rounded px-3 py-2"
+                  value={formData.securityQuestion}
+                  onChange={e => setFormData({ ...formData, securityQuestion: e.target.value })}
+                >
+                  {SECURITY_QUESTIONS.map(q => (
+                    <option key={q} value={q}>{q}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Security Answer Input */}
+            {(mode === 'signup' || mode === 'forgot-password') && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1">Security Answer</label>
+                <input
+                  type="text"
+                  className="w-full border rounded px-3 py-2"
+                  value={formData.securityAnswer}
+                  onChange={e => setFormData({ ...formData, securityAnswer: e.target.value })}
+                  placeholder="Enter your answer"
+                />
               </div>
             )}
 
