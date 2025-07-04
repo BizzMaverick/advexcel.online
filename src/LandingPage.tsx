@@ -36,7 +36,7 @@ const LandingPage = () => {
       fontFamily: 'system-ui, Avenir, Helvetica, Arial, sans-serif',
       padding: '32px 8px'
     }}>
-      <img src="/logo" alt="Excel Pro Logo" style={{ height: 64, marginBottom: 24, borderRadius: 12, boxShadow: '0 2px 8px #0002' }} />
+      <img src="/logo.png" alt="Excel Pro Logo" style={{ height: 64, marginBottom: 24, borderRadius: 12, boxShadow: '0 2px 8px #0002' }} />
       <h1 style={{ fontSize: '3rem', fontWeight: 800, margin: '0 0 12px 0', letterSpacing: '-1px' }}>Excel Pro AI</h1>
       <p style={{ fontSize: '1.25rem', maxWidth: 600, textAlign: 'center', margin: '0 0 24px 0', color: '#b3b3b3' }}>
         AI-powered Excel automation and analytics for everyone. Upload your sheet, type a prompt, and let AI do the work!
@@ -56,11 +56,12 @@ const LandingPage = () => {
       }}>Get Started</a>
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
         gap: 24,
         width: '100%',
-        maxWidth: 900,
-        margin: '0 auto'
+        maxWidth: 700,
+        margin: '0 auto',
+        justifyItems: 'center',
       }}>
         {features.map((f, i) => (
           <div key={i} style={{
