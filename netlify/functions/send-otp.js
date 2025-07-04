@@ -1,3 +1,4 @@
+process.env.NEON_CONFIG = "webSocket=false";
 const { Pool } = require('@neondatabase/serverless');
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const nodemailer = require('nodemailer');
@@ -60,8 +61,14 @@ exports.handler = async function(event, context) {
     }
 
     // Check if user exists
-    const { rows: userRows } = await pool.query('SELECT * FROM users WHERE email = $1', [identifier]);
-    const user = userRows[0];
+    let user;
+    try {
+      const { rows: userRows } = await pool.query('SELECT * FROM users WHERE email = $1', [identifier]);
+      user = userRows[0];
+    } catch (dbErr) {
+      console.error('Database connection/query error:', dbErr);
+      return { statusCode: 500, headers, body: JSON.stringify({ success: false, message: 'Database error', error: dbErr.message }) };
+    }
     if (!user) {
       console.log('User not found for OTP:', identifier);
       return {
@@ -71,23 +78,22 @@ exports.handler = async function(event, context) {
       };
     }
 
-    // Generate a 6-digit OTP
+    // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
 
-    // Store OTP in a new otps table (create if not exists)
-    await pool.query(
-      'CREATE TABLE IF NOT EXISTS otps (id SERIAL PRIMARY KEY, email TEXT, otp TEXT, expires_at TIMESTAMP, created_at TIMESTAMP DEFAULT NOW())'
-    );
-    await pool.query(
-      'INSERT INTO otps (email, otp, expires_at) VALUES ($1, $2, $3)',
-      [identifier, otp, expiresAt]
-    );
-    console.log('OTP generated and stored:', { identifier, otp, expiresAt });
+    // Store OTP
+    try {
+      await pool.query('CREATE TABLE IF NOT EXISTS otps (id SERIAL PRIMARY KEY, email TEXT, otp TEXT, expires_at TIMESTAMP, created_at TIMESTAMP DEFAULT NOW())');
+      await pool.query('INSERT INTO otps (email, otp, expires_at) VALUES ($1, $2, $3)', [identifier, otp, expiresAt]);
+      console.log('OTP generated and stored:', { identifier, otp, expiresAt });
+    } catch (dbErr) {
+      console.error('Error storing OTP:', dbErr);
+      return { statusCode: 500, headers, body: JSON.stringify({ success: false, message: 'Failed to store OTP', error: dbErr.message }) };
+    }
 
-    // Send OTP via email or SMS
+    // Send OTP via email
     if (identifier.includes('@')) {
-      // Send via email
       try {
         await transporter.sendMail({
           from: process.env.SMTP_USER,
@@ -99,11 +105,7 @@ exports.handler = async function(event, context) {
         console.log('OTP sent via email to:', identifier);
       } catch (emailErr) {
         console.error('Error sending OTP email:', emailErr);
-        return {
-          statusCode: 500,
-          headers,
-          body: JSON.stringify({ success: false, message: 'Failed to send verification email', error: emailErr.message })
-        };
+        return { statusCode: 500, headers, body: JSON.stringify({ success: false, message: 'Failed to send verification email', error: emailErr.message }) };
       }
     } else {
       // For now, SMS OTP is not active. Only email OTP is sent.
