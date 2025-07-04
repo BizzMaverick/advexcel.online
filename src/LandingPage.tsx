@@ -1,5 +1,5 @@
 //import React from 'react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 
 const features = [
@@ -25,41 +25,40 @@ const features = [
   }
 ];
 
-const ExcelUploader = () => {
+const ExcelUploader = ({ visible }: { visible: boolean }) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [tableHtml, setTableHtml] = useState<string | null>(null);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const data = await file.arrayBuffer();
     const workbook = XLSX.read(data);
-    // For now, just show the first sheet as a table
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
     const json: (string | number | null)[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-    // Render as HTML table below (Luckysheet integration next)
-    const table = document.getElementById('excel-table');
-    if (table) {
-      table.innerHTML =
-        '<table style="border-collapse:collapse;width:100%;overflow:auto">' +
-        json
-          .map(
-            (row) =>
-              '<tr>' +
-              (Array.isArray(row)
-                ? row
-                    .map(
-                      (cell) =>
-                        `<td style=\"border:1px solid #444;padding:4px 8px;min-width:60px;max-width:200px;overflow-x:auto;\">${cell ?? ''}</td>`
-                    )
-                    .join('')
-                : '') +
-              '</tr>'
-          )
-          .join('') +
-        '</table>';
-    }
+    const html =
+      '<table style="border-collapse:collapse;width:100%;overflow:auto">' +
+      json
+        .map(
+          (row) =>
+            '<tr>' +
+            (Array.isArray(row)
+              ? row
+                  .map(
+                    (cell) =>
+                      `<td style=\"border:1px solid #444;padding:4px 8px;min-width:60px;max-width:200px;overflow-x:auto;\">${cell ?? ''}</td>`
+                  )
+                  .join('')
+              : '') +
+            '</tr>'
+        )
+        .join('') +
+      '</table>';
+    setTableHtml(html);
   };
+
+  if (!visible) return null;
 
   return (
     <div style={{ margin: '48px auto', maxWidth: 900, width: '100%' }}>
@@ -70,12 +69,16 @@ const ExcelUploader = () => {
         onChange={handleFile}
         style={{ marginBottom: 16 }}
       />
-      <div id="excel-table" style={{ maxHeight: 400, overflow: 'auto', background: '#23243a', borderRadius: 8 }}></div>
+      <div id="excel-table" style={{ maxHeight: 400, overflow: 'auto', background: '#23243a', borderRadius: 8 }}
+        dangerouslySetInnerHTML={tableHtml ? { __html: tableHtml } : undefined}
+      />
     </div>
   );
 };
 
 const LandingPage = () => {
+  const [showUploader, setShowUploader] = useState(false);
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -93,19 +96,24 @@ const LandingPage = () => {
       <p style={{ fontSize: 22, color: '#bfc4d1', margin: '18px 0 32px 0', textAlign: 'center', maxWidth: 600 }}>
         AI-powered Excel automation and analytics for everyone. Upload your sheet, type a prompt, and let AI do the work!
       </p>
-      <button style={{
-        background: 'linear-gradient(90deg, #6a8dff 0%, #7f53ff 100%)',
-        color: '#fff',
-        fontWeight: 600,
-        fontSize: 20,
-        border: 'none',
-        borderRadius: 8,
-        padding: '14px 38px',
-        marginBottom: 40,
-        cursor: 'pointer',
-        boxShadow: '0 2px 8px #0002',
-        transition: 'background 0.2s',
-      }}>Get Started</button>
+      <button
+        style={{
+          background: 'linear-gradient(90deg, #6a8dff 0%, #7f53ff 100%)',
+          color: '#fff',
+          fontWeight: 600,
+          fontSize: 20,
+          border: 'none',
+          borderRadius: 8,
+          padding: '14px 38px',
+          marginBottom: 40,
+          cursor: 'pointer',
+          boxShadow: '0 2px 8px #0002',
+          transition: 'background 0.2s',
+        }}
+        onClick={() => setShowUploader(true)}
+      >
+        Get Started
+      </button>
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
@@ -138,7 +146,7 @@ const LandingPage = () => {
         ))}
       </div>
       <div style={{ marginTop: 48 }}>
-        <ExcelUploader />
+        <ExcelUploader visible={showUploader} />
       </div>
     </div>
   );
