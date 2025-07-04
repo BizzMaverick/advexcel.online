@@ -70,3 +70,5 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* Luckysheet CSS imports removed; now loaded via CDN in index.html */
