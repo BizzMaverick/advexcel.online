@@ -1,3 +1,7 @@
+@import "luckysheet/dist/plugins/css/plugins.css";
+@import "luckysheet/dist/css/luckysheet.css";
+@import "luckysheet/dist/assets/iconfont/iconfont.css";
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;

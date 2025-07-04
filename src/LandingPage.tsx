@@ -1,9 +1,6 @@
 //import React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import "luckysheet/dist/plugins/css/plugins.css";
-import "luckysheet/dist/css/luckysheet.css";
-import "luckysheet/dist/assets/iconfont/iconfont.css";
 // @ts-ignore: No types for luckysheet
 import luckysheet from 'luckysheet';
 
