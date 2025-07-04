@@ -25,57 +25,6 @@ const features = [
   }
 ];
 
-const ExcelUploader = ({ visible }: { visible: boolean }) => {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [tableHtml, setTableHtml] = useState<string | null>(null);
-
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const data = await file.arrayBuffer();
-    const workbook = XLSX.read(data);
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const json: (string | number | null)[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-    const html =
-      '<table style="border-collapse:collapse;width:100%;overflow:auto">' +
-      json
-        .map(
-          (row) =>
-            '<tr>' +
-            (Array.isArray(row)
-              ? row
-                  .map(
-                    (cell) =>
-                      `<td style=\"border:1px solid #444;padding:4px 8px;min-width:60px;max-width:200px;overflow-x:auto;\">${cell ?? ''}</td>`
-                  )
-                  .join('')
-              : '') +
-            '</tr>'
-        )
-        .join('') +
-      '</table>';
-    setTableHtml(html);
-  };
-
-  if (!visible) return null;
-
-  return (
-    <div style={{ margin: '48px auto', maxWidth: 900, width: '100%' }}>
-      <input
-        type="file"
-        accept=".xlsx,.xls"
-        ref={inputRef}
-        onChange={handleFile}
-        style={{ marginBottom: 16 }}
-      />
-      <div id="excel-table" style={{ maxHeight: 400, overflow: 'auto', background: '#23243a', borderRadius: 8 }}
-        dangerouslySetInnerHTML={tableHtml ? { __html: tableHtml } : undefined}
-      />
-    </div>
-  );
-};
-
 const LandingPage = () => {
   const [showUploader, setShowUploader] = useState(false);
   const [tableHtml, setTableHtml] = useState<string | null>(null);
