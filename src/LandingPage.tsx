@@ -1,8 +1,6 @@
 //import React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-// @ts-ignore: No types for luckysheet
-import luckysheet from 'luckysheet';
 
 const features = [
   {
@@ -61,7 +59,8 @@ const LandingPage = () => {
     if (document.getElementById('luckysheet')) {
       document.getElementById('luckysheet')!.innerHTML = '';
     }
-    luckysheet.create({
+    // @ts-ignore
+    window.luckysheet.create({
       container: 'luckysheet',
       data: luckysheetData,
       showinfobar: false,
