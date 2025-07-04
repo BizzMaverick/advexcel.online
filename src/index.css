@@ -1,6 +1,4 @@
-@import "luckysheet/dist/plugins/css/plugins.css";
-@import "luckysheet/dist/css/luckysheet.css";
-@import "luckysheet/dist/assets/iconfont/iconfont.css";
+/* Luckysheet CSS imports removed; now loaded via CDN in index.html */
 
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -70,5 +68,3 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
-
-/* Luckysheet CSS imports removed; now loaded via CDN in index.html */
