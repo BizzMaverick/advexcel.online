@@ -78,6 +78,36 @@ const ExcelUploader = ({ visible }: { visible: boolean }) => {
 
 const LandingPage = () => {
   const [showUploader, setShowUploader] = useState(false);
+  const [tableHtml, setTableHtml] = useState<string | null>(null);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data);
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const json: (string | number | null)[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+    const html =
+      '<table style="border-collapse:collapse;width:100%;overflow:auto">' +
+      json
+        .map(
+          (row) =>
+            '<tr>' +
+            (Array.isArray(row)
+              ? row
+                  .map(
+                    (cell) =>
+                      `<td style=\"border:1px solid #444;padding:4px 8px;min-width:60px;max-width:200px;overflow-x:auto;\">${cell ?? ''}</td>`
+                  )
+                  .join('')
+              : '') +
+            '</tr>'
+        )
+        .join('') +
+      '</table>';
+    setTableHtml(html);
+  };
 
   return (
     <div style={{
@@ -93,29 +123,34 @@ const LandingPage = () => {
     }}>
       <img src="/logo.png" alt="Excel Pro Logo" style={{ height: 64, marginBottom: 24, borderRadius: 12, boxShadow: '0 2px 8px #0002' }} />
       <h1 style={{ fontSize: 48, fontWeight: 800, margin: 0, color: '#fff', textAlign: 'center' }}>Excel Pro AI</h1>
-      <p style={{ fontSize: 22, color: '#bfc4d1', margin: '18px 0 32px 0', textAlign: 'center', maxWidth: 600 }}>
-        AI-powered Excel automation and analytics for everyone. Upload your sheet, type a prompt, and let AI do the work!
-      </p>
       {!showUploader && (
         <>
-          <button
-            style={{
-              background: 'linear-gradient(90deg, #6a8dff 0%, #7f53ff 100%)',
-              color: '#fff',
-              fontWeight: 600,
-              fontSize: 20,
-              border: 'none',
-              borderRadius: 8,
-              padding: '14px 38px',
-              marginBottom: 40,
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px #0002',
-              transition: 'background 0.2s',
-            }}
-            onClick={() => setShowUploader(true)}
-          >
-            Get Started
-          </button>
+          <p style={{ fontSize: 22, color: '#bfc4d1', margin: '18px 0 32px 0', textAlign: 'center', maxWidth: 600 }}>
+            AI-powered Excel automation and analytics for everyone. <br />
+            <span style={{ fontWeight: 500 }}>
+              <button
+                style={{
+                  background: 'linear-gradient(90deg, #6a8dff 0%, #7f53ff 100%)',
+                  color: '#fff',
+                  fontWeight: 600,
+                  fontSize: 18,
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '6px 18px',
+                  margin: '0 4px',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px #0002',
+                  transition: 'background 0.2s',
+                  display: 'inline-block',
+                  verticalAlign: 'middle',
+                }}
+                onClick={() => setShowUploader(true)}
+              >
+                Get Started
+              </button>
+            </span>
+            to <b>Upload your sheet</b>, type a prompt, and let AI do the work!
+          </p>
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
@@ -150,9 +185,26 @@ const LandingPage = () => {
         </>
       )}
       {showUploader && (
-        <div style={{ marginTop: 48, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <ExcelUploader visible={true} />
-        </div>
+        <>
+          <p style={{ fontSize: 22, color: '#bfc4d1', margin: '18px 0 32px 0', textAlign: 'center', maxWidth: 600 }}>
+            AI-powered Excel automation and analytics for everyone. <br />
+            <label style={{ fontWeight: 500, cursor: 'pointer', color: '#7f53ff', textDecoration: 'underline' }}>
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFile}
+                style={{ display: 'none' }}
+              />
+              Upload your sheet
+            </label>
+            , type a prompt, and let AI do the work!
+          </p>
+          {tableHtml && (
+            <div style={{ maxHeight: 400, overflow: 'auto', background: '#23243a', borderRadius: 8, margin: '0 auto', maxWidth: 900, width: '100%' }}
+              dangerouslySetInnerHTML={{ __html: tableHtml }}
+            />
+          )}
+        </>
       )}
     </div>
   );
