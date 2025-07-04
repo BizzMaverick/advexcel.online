@@ -2,52 +2,83 @@ import React from 'react';
 
 const features = [
   {
-    title: 'AI-Powered Excel Automation',
-    description: 'Let AI handle formulas, data cleaning, and repetitive tasks instantly.',
     icon: '🤖',
+    title: 'AI-Powered Excel Automation',
+    description: 'Let AI handle formulas, data cleaning, and repetitive tasks instantly.'
   },
   {
-    title: 'Natural Language Prompts',
-    description: 'Just type what you want—no coding or complex formulas needed.',
     icon: '💬',
+    title: 'Natural Language Prompts',
+    description: 'Just type what you want—no coding or complex formulas needed.'
   },
   {
-    title: 'Advanced Analytics',
-    description: 'Get instant insights, trends, and visualizations from your data.',
     icon: '📊',
+    title: 'Advanced Analytics',
+    description: 'Get instant insights, trends, and visualizations from your data.'
   },
   {
-    title: 'Secure & Private',
-    description: 'Your data stays safe—processing happens right in your browser.',
     icon: '🔒',
-  },
+    title: 'Secure & Private',
+    description: 'Your data stays safe and private—always.'
+  }
 ];
 
-const LandingPage: React.FC = () => {
+const LandingPage = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#182848] via-[#005bea] to-[#00c6fb] flex flex-col items-center justify-center px-4 py-8">
-      <header className="flex flex-col items-center mb-12 mt-8">
-        <img src="/logo.png" alt="Excel Pro Logo" className="w-32 h-32 mb-6 rounded-full shadow-lg border-4 border-gray-200" />
-        <h1 className="text-5xl md:text-6xl font-extrabold text-white drop-shadow mb-4 text-center">Excel Pro AI</h1>
-        <p className="text-xl md:text-2xl text-gray-200 text-center max-w-2xl mb-6">
-          AI-powered Excel automation and analytics for everyone. Upload your sheet, type a prompt, and let AI do the work!
-        </p>
-        <a href="#get-started" className="mt-4 px-8 py-4 rounded-full bg-gradient-to-r from-[#00c6fb] to-[#005bea] text-white font-bold text-lg shadow-lg hover:scale-105 transition-transform">
-          Get Started
-        </a>
-      </header>
-      <section className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
-        {features.map((feature) => (
-          <div key={feature.title} className="bg-white/10 rounded-2xl shadow-xl p-6 flex flex-col items-center text-center">
-            <span className="text-4xl mb-3">{feature.icon}</span>
-            <h3 className="text-xl font-bold text-gray-200 mb-2">{feature.title}</h3>
-            <p className="text-gray-200 text-base">{feature.description}</p>
+    <div style={{
+      minHeight: '100vh',
+      background: '#18181b',
+      color: '#fff',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontFamily: 'system-ui, Avenir, Helvetica, Arial, sans-serif',
+      padding: '32px 8px'
+    }}>
+      <img src="/logo" alt="Excel Pro Logo" style={{ height: 64, marginBottom: 24, borderRadius: 12, boxShadow: '0 2px 8px #0002' }} />
+      <h1 style={{ fontSize: '3rem', fontWeight: 800, margin: '0 0 12px 0', letterSpacing: '-1px' }}>Excel Pro AI</h1>
+      <p style={{ fontSize: '1.25rem', maxWidth: 600, textAlign: 'center', margin: '0 0 24px 0', color: '#b3b3b3' }}>
+        AI-powered Excel automation and analytics for everyone. Upload your sheet, type a prompt, and let AI do the work!
+      </p>
+      <a href="#get-started" style={{
+        background: 'linear-gradient(90deg, #6366f1 0%, #60a5fa 100%)',
+        color: '#fff',
+        padding: '12px 32px',
+        borderRadius: 8,
+        fontWeight: 600,
+        fontSize: '1.1rem',
+        textDecoration: 'none',
+        marginBottom: 40,
+        boxShadow: '0 2px 8px #0002',
+        transition: 'background 0.2s',
+        display: 'inline-block'
+      }}>Get Started</a>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+        gap: 24,
+        width: '100%',
+        maxWidth: 900,
+        margin: '0 auto'
+      }}>
+        {features.map((f, i) => (
+          <div key={i} style={{
+            background: '#23232b',
+            borderRadius: 12,
+            padding: 28,
+            boxShadow: '0 2px 12px #0001',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            minHeight: 180
+          }}>
+            <span style={{ fontSize: 32, marginBottom: 12 }}>{f.icon}</span>
+            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, margin: '0 0 8px 0' }}>{f.title}</h2>
+            <p style={{ color: '#b3b3b3', margin: 0 }}>{f.description}</p>
           </div>
         ))}
-      </section>
-      <footer className="mt-auto text-gray-200 text-sm text-center opacity-80">
-        &copy; {new Date().getFullYear()} Excel Pro AI. All rights reserved.
-      </footer>
+      </div>
     </div>
   );
 };
