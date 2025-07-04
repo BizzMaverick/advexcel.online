@@ -1,6 +1,6 @@
 process.env.NEON_CONFIG = "webSocket=false";
 const { Pool } = require('@neondatabase/serverless');
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({ connectionString: process.env.DATABASE_URL, useHttp: true });
 const nodemailer = require('nodemailer');
 
 console.log('send-otp function loaded.');
