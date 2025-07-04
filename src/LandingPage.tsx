@@ -27,56 +27,61 @@ const LandingPage = () => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#18181b',
-      color: '#fff',
+      width: '100vw',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      fontFamily: 'system-ui, Avenir, Helvetica, Arial, sans-serif',
-      padding: '32px 8px'
+      background: 'linear-gradient(120deg, #23243a 0%, #23243a 60%, #23243a 100%)',
+      padding: 0,
+      margin: 0,
     }}>
       <img src="/logo.png" alt="Excel Pro Logo" style={{ height: 64, marginBottom: 24, borderRadius: 12, boxShadow: '0 2px 8px #0002' }} />
-      <h1 style={{ fontSize: '3rem', fontWeight: 800, margin: '0 0 12px 0', letterSpacing: '-1px' }}>Excel Pro AI</h1>
-      <p style={{ fontSize: '1.25rem', maxWidth: 600, textAlign: 'center', margin: '0 0 24px 0', color: '#b3b3b3' }}>
+      <h1 style={{ fontSize: 48, fontWeight: 800, margin: 0, color: '#fff', textAlign: 'center' }}>Excel Pro AI</h1>
+      <p style={{ fontSize: 22, color: '#bfc4d1', margin: '18px 0 32px 0', textAlign: 'center', maxWidth: 600 }}>
         AI-powered Excel automation and analytics for everyone. Upload your sheet, type a prompt, and let AI do the work!
       </p>
-      <a href="#get-started" style={{
-        background: 'linear-gradient(90deg, #6366f1 0%, #60a5fa 100%)',
+      <button style={{
+        background: 'linear-gradient(90deg, #6a8dff 0%, #7f53ff 100%)',
         color: '#fff',
-        padding: '12px 32px',
-        borderRadius: 8,
         fontWeight: 600,
-        fontSize: '1.1rem',
-        textDecoration: 'none',
+        fontSize: 20,
+        border: 'none',
+        borderRadius: 8,
+        padding: '14px 38px',
         marginBottom: 40,
+        cursor: 'pointer',
         boxShadow: '0 2px 8px #0002',
         transition: 'background 0.2s',
-        display: 'inline-block'
-      }}>Get Started</a>
+      }}>Get Started</button>
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-        gap: 24,
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gap: 28,
         width: '100%',
-        maxWidth: 700,
+        maxWidth: 900,
         margin: '0 auto',
         justifyItems: 'center',
       }}>
-        {features.map((f, i) => (
-          <div key={i} style={{
-            background: '#23232b',
-            borderRadius: 12,
-            padding: 28,
-            boxShadow: '0 2px 12px #0001',
+        {features.map((feature, idx) => (
+          <div key={idx} style={{
+            background: 'rgba(40, 42, 60, 0.98)',
+            borderRadius: 18,
+            boxShadow: '0 2px 12px #0003',
+            padding: '32px 28px',
+            minHeight: 180,
+            width: '100%',
+            maxWidth: 340,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'flex-start',
-            minHeight: 180
+            justifyContent: 'center',
+            color: '#fff',
+            transition: 'transform 0.15s',
           }}>
-            <span style={{ fontSize: 32, marginBottom: 12 }}>{f.icon}</span>
-            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, margin: '0 0 8px 0' }}>{f.title}</h2>
-            <p style={{ color: '#b3b3b3', margin: 0 }}>{f.description}</p>
+            <span style={{ fontSize: 36, marginBottom: 12 }}>{feature.icon}</span>
+            <h2 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 8px 0' }}>{feature.title}</h2>
+            <p style={{ fontSize: 16, color: '#bfc4d1', margin: 0 }}>{feature.description}</p>
           </div>
         ))}
       </div>
