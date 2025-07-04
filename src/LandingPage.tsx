@@ -1,6 +1,11 @@
 //import React from 'react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
+import "luckysheet/dist/plugins/css/plugins.css";
+import "luckysheet/dist/css/luckysheet.css";
+import "luckysheet/dist/assets/iconfont/iconfont.css";
+// @ts-ignore: No types for luckysheet
+import luckysheet from 'luckysheet';
 
 const features = [
   {
@@ -27,7 +32,18 @@ const features = [
 
 const LandingPage = () => {
   const [showUploader, setShowUploader] = useState(false);
-  const [tableHtml, setTableHtml] = useState<string | null>(null);
+  const [sheetLoaded, setSheetLoaded] = useState(false);
+  const [prompt, setPrompt] = useState('');
+  const luckysheetRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Clean up Luckysheet instance on unmount
+    return () => {
+      if (document.getElementById('luckysheet')) {
+        document.getElementById('luckysheet')!.innerHTML = '';
+      }
+    };
+  }, []);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -37,25 +53,84 @@ const LandingPage = () => {
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
     const json: (string | number | null)[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-    const html =
-      '<table style="border-collapse:collapse;width:100%;overflow:auto">' +
-      json
-        .map(
-          (row) =>
-            '<tr>' +
-            (Array.isArray(row)
-              ? row
-                  .map(
-                    (cell) =>
-                      `<td style=\"border:1px solid #444;padding:4px 8px;min-width:60px;max-width:200px;overflow-x:auto;\">${cell ?? ''}</td>`
-                  )
-                  .join('')
-              : '') +
-            '</tr>'
-        )
-        .join('') +
-      '</table>';
-    setTableHtml(html);
+    // Prepare Luckysheet data
+    const luckysheetData = [
+      {
+        name: sheetName,
+        data: json.map(row => row.map(cell => ({ v: cell })))
+      }
+    ];
+    // Destroy previous instance if any
+    if (document.getElementById('luckysheet')) {
+      document.getElementById('luckysheet')!.innerHTML = '';
+    }
+    luckysheet.create({
+      container: 'luckysheet',
+      data: luckysheetData,
+      showinfobar: false,
+      showtoolbar: true,
+      showstatbar: true,
+      allowEdit: true,
+      lang: 'en',
+      gridKey: '',
+      allowCopy: true,
+      allowEditName: true,
+      allowAddRow: true,
+      allowAddColumn: true,
+      allowDeleteRow: true,
+      allowDeleteColumn: true,
+      allowSort: true,
+      allowFilter: true,
+      allowMoveRow: true,
+      allowMoveColumn: true,
+      allowInsertImage: true,
+      allowInsertLink: true,
+      allowInsertChart: true,
+      allowInsertShape: true,
+      allowInsertComment: true,
+      allowInsertFormula: true,
+      allowInsertFunction: true,
+      allowInsertDropdown: true,
+      allowInsertCheckbox: true,
+      allowInsertRadio: true,
+      allowInsertProgress: true,
+      allowInsertSparkline: true,
+      allowInsertPivotTable: true,
+      allowInsertSlicer: true,
+      allowInsertTimeline: true,
+      allowInsertGantt: true,
+      allowInsertKanban: true,
+      allowInsertMindMap: true,
+      allowInsertOrgChart: true,
+      allowInsertTree: true,
+      allowInsertTreeMap: true,
+      allowInsertSunburst: true,
+      allowInsertFunnel: true,
+      allowInsertGauge: true,
+      allowInsertRadar: true,
+      allowInsertWordCloud: true,
+      allowInsertMap: true,
+      allowInsertGeoMap: true,
+      allowInsertHeatMap: true,
+      allowInsertCalendar: true,
+      allowInsertTimelineChart: true,
+      allowInsertGanttChart: true,
+      allowInsertKanbanChart: true,
+      allowInsertMindMapChart: true,
+      allowInsertOrgChartChart: true,
+      allowInsertTreeChart: true,
+      allowInsertTreeMapChart: true,
+      allowInsertSunburstChart: true,
+      allowInsertFunnelChart: true,
+      allowInsertGaugeChart: true,
+      allowInsertRadarChart: true,
+      allowInsertWordCloudChart: true,
+      allowInsertMapChart: true,
+      allowInsertGeoMapChart: true,
+      allowInsertHeatMapChart: true,
+      allowInsertCalendarChart: true,
+    });
+    setSheetLoaded(true);
   };
 
   return (
@@ -133,7 +208,7 @@ const LandingPage = () => {
           </div>
         </>
       )}
-      {showUploader && (
+      {showUploader && !sheetLoaded && (
         <>
           <p style={{ fontSize: 22, color: '#bfc4d1', margin: '18px 0 32px 0', textAlign: 'center', maxWidth: 600 }}>
             AI-powered Excel automation and analytics for everyone. <br />
@@ -148,12 +223,46 @@ const LandingPage = () => {
             </label>
             , type a prompt, and let AI do the work!
           </p>
-          {tableHtml && (
-            <div style={{ maxHeight: 400, overflow: 'auto', background: '#23243a', borderRadius: 8, margin: '0 auto', maxWidth: 900, width: '100%' }}
-              dangerouslySetInnerHTML={{ __html: tableHtml }}
-            />
-          )}
         </>
+      )}
+      {sheetLoaded && (
+        <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', marginTop: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <input
+              type="text"
+              value={prompt}
+              onChange={e => setPrompt(e.target.value)}
+              placeholder="Type your prompt (e.g., 'Sum column B', 'Remove duplicates', etc.)"
+              style={{
+                width: 400,
+                padding: '10px 16px',
+                fontSize: 18,
+                borderRadius: 8,
+                border: '1px solid #7f53ff',
+                outline: 'none',
+                marginRight: 8
+              }}
+            />
+            <button
+              style={{
+                background: 'linear-gradient(90deg, #6a8dff 0%, #7f53ff 100%)',
+                color: '#fff',
+                fontWeight: 600,
+                fontSize: 18,
+                border: 'none',
+                borderRadius: 8,
+                padding: '10px 24px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px #0002',
+                transition: 'background 0.2s',
+              }}
+              disabled={!prompt.trim()}
+            >
+              Run AI
+            </button>
+          </div>
+          <div id="luckysheet" ref={luckysheetRef} style={{ minHeight: 600, background: '#fff', borderRadius: 8 }} />
+        </div>
       )}
     </div>
   );
