@@ -86,6 +86,11 @@ const LandingPage = () => {
     
     try {
       console.log('Processing AI prompt:', prompt);
+      console.log('Spreadsheet data structure:', {
+        totalRows: spreadsheetData.length,
+        headers: spreadsheetData[0]?.map(cell => cell?.value),
+        firstDataRow: spreadsheetData[1]?.map(cell => cell?.value)
+      });
       
       const result = await AIService.processExcelPrompt(
         prompt,

@@ -105,8 +105,16 @@ Please perform the requested operation and return the result.`;
   private static handleCommonOperations(prompt: string, data: any[][]): { operation: ExcelOperation; newData: any[][] } {
     const lowerPrompt = prompt.toLowerCase();
     
+    console.log('Processing prompt:', prompt);
+    console.log('Data structure:', {
+      totalRows: data.length,
+      headers: data[0]?.map(cell => cell?.value),
+      firstDataRow: data[1]?.map(cell => cell?.value)
+    });
+    
     // Handle sum operations with more specific matching
     if (lowerPrompt.includes('sum') || lowerPrompt.includes('total') || lowerPrompt.includes('add up')) {
+      console.log('Detected sum operation');
       return this.handleSumOperation(prompt, data);
     }
     
@@ -122,6 +130,7 @@ Please perform the requested operation and return the result.`;
     
     // Handle sort operations with more specific matching
     if (lowerPrompt.includes('sort') || lowerPrompt.includes('order') || lowerPrompt.includes('arrange') || lowerPrompt.includes('alphabetical')) {
+      console.log('Detected sort operation');
       return this.handleSortOperation(prompt, data);
     }
     
@@ -319,6 +328,12 @@ Please perform the requested operation and return the result.`;
     const lowerPrompt = prompt.toLowerCase();
     const newData = [...data];
     
+    console.log('Sort operation - Data structure:', {
+      totalRows: newData.length,
+      headers: newData[0]?.map(cell => cell?.value),
+      firstDataRow: newData[1]?.map(cell => cell?.value)
+    });
+    
     // Extract column information from prompt
     const columnMatch = lowerPrompt.match(/column\s*([a-z]|[0-9]+)/i);
     const headingMatch = lowerPrompt.match(/heading\s+([a-z]+)/i) || lowerPrompt.match(/under\s+([a-z]+)/i);
@@ -327,12 +342,20 @@ Please perform the requested operation and return the result.`;
     
     if (columnMatch) {
       colIndex = this.parseColumnReference(columnMatch[1]);
+      console.log('Column reference found:', columnMatch[1], '-> index:', colIndex);
     } else if (headingMatch && newData[0]) {
       // Find column by heading name
       const headingName = headingMatch[1].toLowerCase();
-      colIndex = newData[0].findIndex(cell => 
-        cell?.value?.toString().toLowerCase().includes(headingName)
-      );
+      console.log('Looking for heading:', headingName);
+      
+      colIndex = newData[0].findIndex(cell => {
+        const cellValue = cell?.value?.toString().toLowerCase();
+        const includes = cellValue?.includes(headingName);
+        console.log('Checking cell:', cellValue, 'includes', headingName, ':', includes);
+        return includes;
+      });
+      
+      console.log('Found heading at index:', colIndex);
       if (colIndex === -1) colIndex = 0; // Default to first column if not found
     }
     
