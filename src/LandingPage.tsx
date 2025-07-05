@@ -1,6 +1,7 @@
 //import React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
+import Spreadsheet from 'react-spreadsheet';
 
 const features = [
   {
@@ -28,105 +29,49 @@ const features = [
 const LandingPage = () => {
   const [showUploader, setShowUploader] = useState(false);
   const [sheetLoaded, setSheetLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [prompt, setPrompt] = useState('');
-  const luckysheetRef = useRef<HTMLDivElement>(null);
+  const [spreadsheetData, setSpreadsheetData] = useState<any[][]>([]);
 
-  useEffect(() => {
-    // Clean up Luckysheet instance on unmount
-    return () => {
-      if (document.getElementById('luckysheet')) {
-        document.getElementById('luckysheet')!.innerHTML = '';
-      }
-    };
-  }, []);
-
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const data = await file.arrayBuffer();
-    const workbook = XLSX.read(data);
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const json: (string | number | null)[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-    // Prepare Luckysheet data
-    const luckysheetData = [
-      {
-        name: sheetName,
-        data: json.map(row => row.map(cell => ({ v: cell })))
-      }
-    ];
-    // Destroy previous instance if any
-    if (document.getElementById('luckysheet')) {
-      document.getElementById('luckysheet')!.innerHTML = '';
+    if (!file) {
+      console.log('No file selected');
+      return;
     }
-    // @ts-ignore
-    window.luckysheet.create({
-      container: 'luckysheet',
-      data: luckysheetData,
-      showinfobar: false,
-      showtoolbar: true,
-      showstatbar: true,
-      allowEdit: true,
-      lang: 'en',
-      gridKey: '',
-      allowCopy: true,
-      allowEditName: true,
-      allowAddRow: true,
-      allowAddColumn: true,
-      allowDeleteRow: true,
-      allowDeleteColumn: true,
-      allowSort: true,
-      allowFilter: true,
-      allowMoveRow: true,
-      allowMoveColumn: true,
-      allowInsertImage: true,
-      allowInsertLink: true,
-      allowInsertChart: true,
-      allowInsertShape: true,
-      allowInsertComment: true,
-      allowInsertFormula: true,
-      allowInsertFunction: true,
-      allowInsertDropdown: true,
-      allowInsertCheckbox: true,
-      allowInsertRadio: true,
-      allowInsertProgress: true,
-      allowInsertSparkline: true,
-      allowInsertPivotTable: true,
-      allowInsertSlicer: true,
-      allowInsertTimeline: true,
-      allowInsertGantt: true,
-      allowInsertKanban: true,
-      allowInsertMindMap: true,
-      allowInsertOrgChart: true,
-      allowInsertTree: true,
-      allowInsertTreeMap: true,
-      allowInsertSunburst: true,
-      allowInsertFunnel: true,
-      allowInsertGauge: true,
-      allowInsertRadar: true,
-      allowInsertWordCloud: true,
-      allowInsertMap: true,
-      allowInsertGeoMap: true,
-      allowInsertHeatMap: true,
-      allowInsertCalendar: true,
-      allowInsertTimelineChart: true,
-      allowInsertGanttChart: true,
-      allowInsertKanbanChart: true,
-      allowInsertMindMapChart: true,
-      allowInsertOrgChartChart: true,
-      allowInsertTreeChart: true,
-      allowInsertTreeMapChart: true,
-      allowInsertSunburstChart: true,
-      allowInsertFunnelChart: true,
-      allowInsertGaugeChart: true,
-      allowInsertRadarChart: true,
-      allowInsertWordCloudChart: true,
-      allowInsertMapChart: true,
-      allowInsertGeoMapChart: true,
-      allowInsertHeatMapChart: true,
-      allowInsertCalendarChart: true,
-    });
-    setSheetLoaded(true);
+    
+    setIsLoading(true);
+    console.log('File selected:', file.name, file.size);
+    
+    try {
+      const data = await file.arrayBuffer();
+      console.log('File data loaded, size:', data.byteLength);
+      
+      const workbook = XLSX.read(data);
+      console.log('Workbook loaded, sheets:', workbook.SheetNames);
+      
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const json: (string | number | null)[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      
+      console.log('Sheet data converted to JSON, rows:', json.length);
+      
+      // Convert to react-spreadsheet format
+      const spreadsheetData = json.map(row => 
+        row.map(cell => ({ value: cell || '' }))
+      );
+      
+      console.log('Spreadsheet data prepared:', spreadsheetData);
+      setSpreadsheetData(spreadsheetData);
+      setSheetLoaded(true);
+      console.log('Spreadsheet created successfully!');
+      
+    } catch (error) {
+      console.error('Error processing file:', error);
+      alert('Error processing file. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -214,11 +159,26 @@ const LandingPage = () => {
                 accept=".xlsx,.xls"
                 onChange={handleFile}
                 style={{ display: 'none' }}
+                disabled={isLoading}
               />
-              Upload your sheet
+              {isLoading ? 'Processing...' : 'Upload your sheet'}
             </label>
             , type a prompt, and let AI do the work!
           </p>
+          {isLoading && (
+            <div style={{ textAlign: 'center', marginTop: 20 }}>
+              <div style={{ 
+                display: 'inline-block',
+                width: 40,
+                height: 40,
+                border: '4px solid #7f53ff',
+                borderTop: '4px solid transparent',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite'
+              }}></div>
+              <p style={{ color: '#bfc4d1', marginTop: 10 }}>Processing your Excel file...</p>
+            </div>
+          )}
         </>
       )}
       {sheetLoaded && (
@@ -257,7 +217,19 @@ const LandingPage = () => {
               Run AI
             </button>
           </div>
-          <div id="luckysheet" ref={luckysheetRef} style={{ minHeight: 600, background: '#fff', borderRadius: 8 }} />
+          <div style={{ 
+            background: '#fff', 
+            borderRadius: 8, 
+            padding: 16,
+            boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
+            overflow: 'auto',
+            maxHeight: '70vh'
+          }}>
+            <Spreadsheet 
+              data={spreadsheetData}
+              onChange={setSpreadsheetData}
+            />
+          </div>
         </div>
       )}
     </div>
