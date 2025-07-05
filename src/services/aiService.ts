@@ -121,7 +121,7 @@ Please perform the requested operation and return the result.`;
     }
     
     // Handle sort operations with more specific matching
-    if (lowerPrompt.includes('sort') || lowerPrompt.includes('order') || lowerPrompt.includes('arrange')) {
+    if (lowerPrompt.includes('sort') || lowerPrompt.includes('order') || lowerPrompt.includes('arrange') || lowerPrompt.includes('alphabetical')) {
       return this.handleSortOperation(prompt, data);
     }
     
@@ -319,7 +319,20 @@ Please perform the requested operation and return the result.`;
     
     // Extract column information from prompt
     const columnMatch = lowerPrompt.match(/column\s*([a-z]|[0-9]+)/i);
-    const colIndex = columnMatch ? this.parseColumnReference(columnMatch[1]) : 0;
+    const headingMatch = lowerPrompt.match(/heading\s+([a-z]+)/i) || lowerPrompt.match(/under\s+([a-z]+)/i);
+    
+    let colIndex = 0;
+    
+    if (columnMatch) {
+      colIndex = this.parseColumnReference(columnMatch[1]);
+    } else if (headingMatch && newData[0]) {
+      // Find column by heading name
+      const headingName = headingMatch[1].toLowerCase();
+      colIndex = newData[0].findIndex(cell => 
+        cell?.value?.toString().toLowerCase().includes(headingName)
+      );
+      if (colIndex === -1) colIndex = 0; // Default to first column if not found
+    }
     
     if (newData.length > 1) {
       const dataRows = newData.slice(1);
@@ -359,7 +372,20 @@ Please perform the requested operation and return the result.`;
     
     // Extract column information from prompt
     const columnMatch = lowerPrompt.match(/column\s*([a-z]|[0-9]+)/i);
-    const colIndex = columnMatch ? this.parseColumnReference(columnMatch[1]) : 1;
+    const headingMatch = lowerPrompt.match(/heading\s+([a-z]+)/i) || lowerPrompt.match(/under\s+([a-z]+)/i);
+    
+    let colIndex = 1;
+    
+    if (columnMatch) {
+      colIndex = this.parseColumnReference(columnMatch[1]);
+    } else if (headingMatch && newData[0]) {
+      // Find column by heading name
+      const headingName = headingMatch[1].toLowerCase();
+      colIndex = newData[0].findIndex(cell => 
+        cell?.value?.toString().toLowerCase().includes(headingName)
+      );
+      if (colIndex === -1) colIndex = 1; // Default to second column if not found
+    }
     
     if (lowerPrompt.includes('sum') || lowerPrompt.includes('total')) {
       // Sum specific column
