@@ -96,10 +96,10 @@ Please perform the requested operation and return the result.`;
     if (!data || data.length === 0) return 'Empty spreadsheet';
     
     const headers = data[0]?.map((cell, index) => `Column ${index + 1}: ${cell?.value || 'empty'}`) || [];
-    const rowCount = data.length;
+    const rowCount = data.length - 1; // Subtract 1 for header row
     const colCount = data[0]?.length || 0;
     
-    return `Spreadsheet with ${rowCount} rows and ${colCount} columns. Headers: ${headers.join(', ')}`;
+    return `Spreadsheet with ${rowCount} data rows and ${colCount} columns. Headers: ${headers.join(', ')}. First row contains column headers.`;
   }
 
   private static handleCommonOperations(prompt: string, data: any[][]): { operation: ExcelOperation; newData: any[][] } {
@@ -154,11 +154,12 @@ Please perform the requested operation and return the result.`;
     // Simple sum implementation
     const newData = [...data];
     
-    // Add a sum row at the bottom
+    // Add a sum row at the bottom (preserving headers)
     if (newData.length > 1) {
       const sumRow = newData[0].map((_, colIndex) => {
         if (colIndex === 0) return { value: 'SUM' };
         
+        // Sum only numeric values from data rows (skip header row)
         const sum = newData.slice(1).reduce((acc, row) => {
           const cellValue = row[colIndex]?.value;
           const numValue = parseFloat(cellValue);
@@ -184,11 +185,12 @@ Please perform the requested operation and return the result.`;
     // Simple average implementation
     const newData = [...data];
     
-    // Add an average row at the bottom
+    // Add an average row at the bottom (preserving headers)
     if (newData.length > 1) {
       const avgRow = newData[0].map((_, colIndex) => {
         if (colIndex === 0) return { value: 'AVERAGE' };
         
+        // Calculate average only from data rows (skip header row)
         const numericRows = newData.slice(1).filter(row => {
           const cellValue = row[colIndex]?.value;
           return !isNaN(parseFloat(cellValue));
@@ -335,6 +337,8 @@ Please perform the requested operation and return the result.`;
     }
     
     if (newData.length > 1) {
+      // Always treat first row as headers and sort from second row onwards
+      const headerRow = newData[0];
       const dataRows = newData.slice(1);
       
       dataRows.sort((a, b) => {
@@ -353,6 +357,7 @@ Please perform the requested operation and return the result.`;
         return aValue.toString().localeCompare(bValue.toString());
       });
       
+      // Reconstruct the data with headers preserved
       newData.splice(1, dataRows.length, ...dataRows);
     }
     
@@ -390,6 +395,7 @@ Please perform the requested operation and return the result.`;
     if (lowerPrompt.includes('sum') || lowerPrompt.includes('total')) {
       // Sum specific column
       if (newData.length > 1 && colIndex < newData[0].length) {
+        // Sum only numeric values from data rows (skip header row)
         const sum = newData.slice(1).reduce((acc, row) => {
           const cellValue = row[colIndex]?.value;
           const numValue = parseFloat(cellValue);
@@ -415,6 +421,7 @@ Please perform the requested operation and return the result.`;
     if (lowerPrompt.includes('average') || lowerPrompt.includes('mean')) {
       // Average specific column
       if (newData.length > 1 && colIndex < newData[0].length) {
+        // Calculate average only from data rows (skip header row)
         const numericRows = newData.slice(1).filter(row => {
           const cellValue = row[colIndex]?.value;
           return !isNaN(parseFloat(cellValue));
