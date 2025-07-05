@@ -2,6 +2,8 @@
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
 import Spreadsheet from 'react-spreadsheet';
+import { AIService } from './services/aiService';
+import type { ExcelOperation } from './services/aiService';
 
 const features = [
   {
@@ -32,6 +34,8 @@ const LandingPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [spreadsheetData, setSpreadsheetData] = useState<any[][]>([]);
+  const [isProcessingAI, setIsProcessingAI] = useState(false);
+  const [lastOperation, setLastOperation] = useState<ExcelOperation | null>(null);
 
     const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -71,6 +75,35 @@ const LandingPage = () => {
       alert('Error processing file. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAIProcessing = async () => {
+    if (!prompt.trim() || !spreadsheetData.length) return;
+    
+    setIsProcessingAI(true);
+    setLastOperation(null);
+    
+    try {
+      console.log('Processing AI prompt:', prompt);
+      
+      const result = await AIService.processExcelPrompt(
+        prompt,
+        spreadsheetData,
+        spreadsheetData
+      );
+      
+      console.log('AI processing result:', result);
+      
+      setSpreadsheetData(result.newData);
+      setLastOperation(result.operation);
+      setPrompt('');
+      
+    } catch (error) {
+      console.error('AI processing error:', error);
+      alert('Error processing AI request. Please try again.');
+    } finally {
+      setIsProcessingAI(false);
     }
   };
 
@@ -183,39 +216,70 @@ const LandingPage = () => {
       )}
       {sheetLoaded && (
         <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', marginTop: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-            <input
-              type="text"
-              value={prompt}
-              onChange={e => setPrompt(e.target.value)}
-              placeholder="Type your prompt (e.g., 'Sum column B', 'Remove duplicates', etc.)"
-              style={{
-                width: 400,
-                padding: '10px 16px',
-                fontSize: 18,
-                borderRadius: 8,
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16, flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ display: 'flex', marginBottom: 8 }}>
+              <input
+                type="text"
+                value={prompt}
+                onChange={e => setPrompt(e.target.value)}
+                placeholder="Type your prompt (e.g., 'Sum column B', 'Remove duplicates', etc.)"
+                style={{
+                  width: 400,
+                  padding: '10px 16px',
+                  fontSize: 18,
+                  borderRadius: 8,
+                  border: '1px solid #7f53ff',
+                  outline: 'none',
+                  marginRight: 8
+                }}
+                onKeyPress={e => e.key === 'Enter' && handleAIProcessing()}
+              />
+              <button
+                onClick={handleAIProcessing}
+                style={{
+                  background: 'linear-gradient(90deg, #6a8dff 0%, #7f53ff 100%)',
+                  color: '#fff',
+                  fontWeight: 600,
+                  fontSize: 18,
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '10px 24px',
+                  cursor: isProcessingAI ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 2px 8px #0002',
+                  transition: 'background 0.2s',
+                  opacity: isProcessingAI ? 0.7 : 1,
+                }}
+                disabled={!prompt.trim() || isProcessingAI}
+              >
+                {isProcessingAI ? 'Processing...' : 'Run AI'}
+              </button>
+            </div>
+            
+            {lastOperation && (
+              <div style={{
+                background: 'rgba(127, 83, 255, 0.1)',
                 border: '1px solid #7f53ff',
-                outline: 'none',
-                marginRight: 8
-              }}
-            />
-            <button
-              style={{
-                background: 'linear-gradient(90deg, #6a8dff 0%, #7f53ff 100%)',
-                color: '#fff',
-                fontWeight: 600,
-                fontSize: 18,
-                border: 'none',
                 borderRadius: 8,
-                padding: '10px 24px',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px #0002',
-                transition: 'background 0.2s',
-              }}
-              disabled={!prompt.trim()}
-            >
-              Run AI
-            </button>
+                padding: '12px 16px',
+                marginTop: 8,
+                color: '#7f53ff',
+                fontSize: 14,
+                fontWeight: 500
+              }}>
+                ✅ {lastOperation.description}
+              </div>
+            )}
+            
+            <div style={{ 
+              marginTop: 12, 
+              fontSize: 14, 
+              color: '#bfc4d1',
+              textAlign: 'center',
+              maxWidth: 600
+            }}>
+              <strong>Try these AI commands:</strong><br />
+              "Sum all columns" • "Calculate average" • "Sort by first column" • "Filter rows" • "Add formulas"
+            </div>
           </div>
           <div style={{ 
             background: '#fff', 
