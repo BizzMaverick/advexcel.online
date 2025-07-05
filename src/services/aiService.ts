@@ -338,7 +338,6 @@ Please perform the requested operation and return the result.`;
     
     if (newData.length > 1) {
       // Always treat first row as headers and sort from second row onwards
-      const headerRow = newData[0];
       const dataRows = newData.slice(1);
       
       dataRows.sort((a, b) => {
