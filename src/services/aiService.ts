@@ -129,7 +129,7 @@ Please perform the requested operation and return the result.`;
     };
   }
 
-  private static handleSumOperation(prompt: string, data: any[][]): { operation: ExcelOperation; newData: any[][] } {
+  private static handleSumOperation(_prompt: string, data: any[][]): { operation: ExcelOperation; newData: any[][] } {
     // Simple sum implementation
     const newData = [...data];
     
@@ -159,7 +159,7 @@ Please perform the requested operation and return the result.`;
     };
   }
 
-  private static handleAverageOperation(prompt: string, data: any[][]): { operation: ExcelOperation; newData: any[][] } {
+  private static handleAverageOperation(_prompt: string, data: any[][]): { operation: ExcelOperation; newData: any[][] } {
     // Simple average implementation
     const newData = [...data];
     
@@ -196,7 +196,7 @@ Please perform the requested operation and return the result.`;
     };
   }
 
-  private static handleFilterOperation(prompt: string, data: any[][]): { operation: ExcelOperation; newData: any[][] } {
+  private static handleFilterOperation(_prompt: string, data: any[][]): { operation: ExcelOperation; newData: any[][] } {
     // Simple filter implementation - keep all data for now
     return {
       operation: {
@@ -207,12 +207,11 @@ Please perform the requested operation and return the result.`;
     };
   }
 
-  private static handleSortOperation(prompt: string, data: any[][]): { operation: ExcelOperation; newData: any[][] } {
+  private static handleSortOperation(_prompt: string, data: any[][]): { operation: ExcelOperation; newData: any[][] } {
     // Simple sort implementation - sort by first column
     const newData = [...data];
     
     if (newData.length > 1) {
-      const headerRow = newData[0];
       const dataRows = newData.slice(1);
       
       dataRows.sort((a, b) => {
