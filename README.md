@@ -16,7 +16,7 @@ To enable AI functionality, you need to set up an OpenAI API key:
 1. **Get an API Key**: Visit [OpenAI Platform](https://platform.openai.com/api-keys) and create a new API key
 2. **Set Environment Variable**: Create a `.env` file in the root directory with:
    ```
-   REACT_APP_OPENAI_API_KEY=your_openai_api_key_here
+   VITE_OPENAI_API_KEY=your_openai_api_key_here
    ```
 3. **Restart the Development Server**: The app will automatically pick up the new environment variable
 

@@ -1,8 +1,15 @@
 import OpenAI from 'openai';
 
 // Initialize OpenAI client
+const apiKey = import.meta.env.VITE_OPENAI_API_KEY || '';
+
+// Security check - don't expose API key in console logs
+if (!apiKey) {
+  console.warn('OpenAI API key not found. Please set VITE_OPENAI_API_KEY in your .env file');
+}
+
 const openai = new OpenAI({
-  apiKey: process.env.REACT_APP_OPENAI_API_KEY || '',
+  apiKey: apiKey,
   dangerouslyAllowBrowser: true // Note: In production, this should be handled server-side
 });
 
@@ -18,6 +25,12 @@ export class AIService {
     spreadsheetData: any[][], 
     currentData: any[][]
   ): Promise<{ operation: ExcelOperation; newData: any[][] }> {
+    
+    // Check if API key is available
+    if (!import.meta.env.VITE_OPENAI_API_KEY) {
+      throw new Error('OpenAI API key not configured. Please set VITE_OPENAI_API_KEY in your .env file');
+    }
+    
     try {
       // Convert spreadsheet data to a format that's easier for AI to understand
       const dataDescription = this.formatDataForAI(spreadsheetData);
@@ -334,9 +347,12 @@ Please perform the requested operation and return the result.`;
       firstDataRow: newData[1]?.map(cell => cell?.value)
     });
     
-    // Extract column information from prompt
+    // Extract column information from prompt with improved pattern matching
     const columnMatch = lowerPrompt.match(/column\s*([a-z]|[0-9]+)/i);
-    const headingMatch = lowerPrompt.match(/heading\s+([a-z]+)/i) || lowerPrompt.match(/under\s+([a-z]+)/i);
+    const headingMatch = lowerPrompt.match(/heading\s+([a-z]+)/i) || 
+                        lowerPrompt.match(/under\s+([a-z]+)/i) ||
+                        lowerPrompt.match(/in\s+([a-z]+)/i) ||
+                        lowerPrompt.match(/by\s+([a-z]+)/i);
     
     let colIndex = 0;
     
@@ -344,18 +360,27 @@ Please perform the requested operation and return the result.`;
       colIndex = this.parseColumnReference(columnMatch[1]);
       console.log('Column reference found:', columnMatch[1], '-> index:', colIndex);
     } else if (headingMatch && newData[0]) {
-      // Find column by heading name
+      // Find column by heading name with improved matching
       const headingName = headingMatch[1].toLowerCase();
       console.log('Looking for heading:', headingName);
       
       colIndex = newData[0].findIndex(cell => {
         const cellValue = cell?.value?.toString().toLowerCase();
         const includes = cellValue?.includes(headingName);
-        console.log('Checking cell:', cellValue, 'includes', headingName, ':', includes);
-        return includes;
+        const exactMatch = cellValue === headingName;
+        console.log('Checking cell:', cellValue, 'exact match:', exactMatch, 'includes:', includes);
+        return exactMatch || includes;
       });
       
       console.log('Found heading at index:', colIndex);
+      if (colIndex === -1) {
+        // Try partial matching if exact match fails
+        colIndex = newData[0].findIndex(cell => {
+          const cellValue = cell?.value?.toString().toLowerCase();
+          return cellValue?.includes(headingName) || headingName.includes(cellValue);
+        });
+        console.log('Partial match found at index:', colIndex);
+      }
       if (colIndex === -1) colIndex = 0; // Default to first column if not found
     }
     
@@ -363,9 +388,15 @@ Please perform the requested operation and return the result.`;
       // Always treat first row as headers and sort from second row onwards
       const dataRows = newData.slice(1);
       
+      console.log('Headers:', newData[0]?.map(cell => cell?.value));
+      console.log('Sorting column index:', colIndex, 'Column name:', this.getColumnName(colIndex));
+      console.log('Data rows before sorting:', dataRows.length);
+      
       dataRows.sort((a, b) => {
         const aValue = a[colIndex]?.value || '';
         const bValue = b[colIndex]?.value || '';
+        
+        console.log('Comparing:', aValue, 'vs', bValue);
         
         // Try numeric comparison first
         const aNum = parseFloat(aValue);
@@ -378,6 +409,8 @@ Please perform the requested operation and return the result.`;
         // Fall back to string comparison
         return aValue.toString().localeCompare(bValue.toString());
       });
+      
+      console.log('Data rows after sorting:', dataRows.length);
       
       // Reconstruct the data with headers preserved
       newData.splice(1, dataRows.length, ...dataRows);
@@ -567,9 +600,13 @@ Please perform the requested operation and return the result.`;
   private static parseColumnReference(ref: string): number {
     // Convert column reference (A, B, C or 1, 2, 3) to 0-based index
     if (/^[a-z]$/i.test(ref)) {
-      return ref.toUpperCase().charCodeAt(0) - 65; // A=0, B=1, C=2, etc.
+      const index = ref.toUpperCase().charCodeAt(0) - 65; // A=0, B=1, C=2, etc.
+      console.log('Parsed column reference:', ref, '-> index:', index);
+      return index;
     }
-    return parseInt(ref) - 1; // 1=0, 2=1, 3=2, etc.
+    const index = parseInt(ref) - 1; // 1=0, 2=1, 3=2, etc.
+    console.log('Parsed numeric reference:', ref, '-> index:', index);
+    return index;
   }
 
   private static getColumnName(index: number): string {

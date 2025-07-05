@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import Spreadsheet from 'react-spreadsheet';
 import { AIService } from './services/aiService';
 import type { ExcelOperation } from './services/aiService';
+import { ApiKeyStatus } from './components/ApiKeyStatus';
 
 const features = [
   {
@@ -36,6 +37,7 @@ const LandingPage = () => {
   const [spreadsheetData, setSpreadsheetData] = useState<any[][]>([]);
   const [isProcessingAI, setIsProcessingAI] = useState(false);
   const [lastOperation, setLastOperation] = useState<ExcelOperation | null>(null);
+  const [apiKeyValid, setApiKeyValid] = useState(false);
 
     const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -106,7 +108,23 @@ const LandingPage = () => {
       
     } catch (error) {
       console.error('AI processing error:', error);
-      alert('Error processing AI request. Please try again.');
+      
+      // Provide more specific error messages
+      let errorMessage = 'Error processing AI request. Please try again.';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('API key not configured')) {
+          errorMessage = 'OpenAI API key not configured. Please check your .env file.';
+        } else if (error.message.includes('401')) {
+          errorMessage = 'Invalid OpenAI API key. Please check your API key.';
+        } else if (error.message.includes('429')) {
+          errorMessage = 'Rate limit exceeded. Please try again later.';
+        } else if (error.message.includes('network')) {
+          errorMessage = 'Network error. Please check your internet connection.';
+        }
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsProcessingAI(false);
     }
@@ -221,6 +239,7 @@ const LandingPage = () => {
       )}
       {sheetLoaded && (
         <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', marginTop: 24 }}>
+          <ApiKeyStatus onValidKey={() => setApiKeyValid(true)} />
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16, flexDirection: 'column', alignItems: 'center' }}>
             <div style={{ display: 'flex', marginBottom: 8 }}>
               <input
@@ -249,14 +268,14 @@ const LandingPage = () => {
                   border: 'none',
                   borderRadius: 8,
                   padding: '10px 24px',
-                  cursor: isProcessingAI ? 'not-allowed' : 'pointer',
+                  cursor: (isProcessingAI || !apiKeyValid) ? 'not-allowed' : 'pointer',
                   boxShadow: '0 2px 8px #0002',
                   transition: 'background 0.2s',
-                  opacity: isProcessingAI ? 0.7 : 1,
+                  opacity: (isProcessingAI || !apiKeyValid) ? 0.7 : 1,
                 }}
-                disabled={!prompt.trim() || isProcessingAI}
+                disabled={!prompt.trim() || isProcessingAI || !apiKeyValid}
               >
-                {isProcessingAI ? 'Processing...' : 'Run AI'}
+                {isProcessingAI ? 'Processing...' : !apiKeyValid ? 'API Key Required' : 'Run AI'}
               </button>
             </div>
             
