@@ -278,7 +278,7 @@ const LandingPage = () => {
               maxWidth: 600
             }}>
               <strong>Try these AI commands:</strong><br />
-              "Sum all columns" • "Calculate average" • "Sort by first column" • "Filter rows" • "Add formulas"
+              "Sum column B" • "Average column A" • "Sort by column C" • "Filter {'>'} 100" • "Add row" • "Calculate total"
             </div>
           </div>
           <div style={{ 
