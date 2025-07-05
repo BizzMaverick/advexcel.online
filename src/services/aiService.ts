@@ -476,7 +476,6 @@ Please perform the requested operation and return the result.`;
     
     if (lowerPrompt.includes('sum') || lowerPrompt.includes('total')) {
       // Add SUM formula to a new column
-      const formulaCol = newData[0].length;
       
       // Add header for formula column
       newData.forEach((row, rowIndex) => {
